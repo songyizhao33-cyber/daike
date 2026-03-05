@@ -9,16 +9,29 @@ const matchRoutes = require('./routes/match');
 
 const app = express();
 
-// 关键修改：配置CORS，仅允许你的前端URL访问
+// CORS 配置 - 简化配置，提高兼容性
 app.use(cors({
-  origin: [
-    'https://daike-1.onrender.com', // 你的前端线上URL
-    'http://localhost:5173', // 本地开发前端地址（可选，方便本地调试）
-    'http://127.0.0.1:5173'
-  ],
-  credentials: true, // 允许携带cookie（如果需要）
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // 允许的请求方法
-  allowedHeaders: ['Content-Type', 'Authorization'] // 允许的请求头
+  origin: function(origin, callback) {
+    // 允许的来源列表
+    const allowedOrigins = [
+      'https://daike-1.onrender.com',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173'
+    ];
+
+    // 允许没有 origin 的请求（如 Postman、curl）
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: false, // 改为 false，简化 CORS
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200 // 某些浏览器对 204 处理有问题
 }));
 
 app.use(express.json());
