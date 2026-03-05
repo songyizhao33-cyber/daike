@@ -9,7 +9,18 @@ const matchRoutes = require('./routes/match');
 
 const app = express();
 
-app.use(cors());
+// 关键修改：配置CORS，仅允许你的前端URL访问
+app.use(cors({
+  origin: [
+    'https://daike-1.onrender.com', // 你的前端线上URL
+    'http://localhost:5173', // 本地开发前端地址（可选，方便本地调试）
+    'http://127.0.0.1:5173'
+  ],
+  credentials: true, // 允许携带cookie（如果需要）
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // 允许的请求方法
+  allowedHeaders: ['Content-Type', 'Authorization'] // 允许的请求头
+}));
+
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI)
