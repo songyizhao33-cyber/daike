@@ -4,6 +4,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  base: '/', // 确保生产环境使用根路径
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')

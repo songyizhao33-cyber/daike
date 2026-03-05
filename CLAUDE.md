@@ -94,3 +94,19 @@ JWT_SECRET=your_jwt_secret_key_here
 - 时间格式统一使用 `HH:mm` 格式字符串
 - 所有需要认证的路由都使用 authMiddleware
 - 前端路由使用 beforeEach 守卫检查登录状态
+
+## 部署架构
+
+### 生产环境（Render）
+- **单服务部署**：后端 Express 服务器同时提供 API 和前端静态文件
+- 构建时先构建前端（生成 `frontend/dist`），再安装后端依赖
+- 后端服务器使用 `express.static` 提供前端静态文件
+- 所有非 API 请求返回 `index.html`，支持 SPA 路由
+- API 请求使用相对路径 `/api`，无跨域问题
+
+### 开发环境
+- 前端：Vite 开发服务器（端口 5173）
+- 后端：Express 服务器（端口 3000）
+- 前端通过 Vite 代理将 `/api` 请求转发到后端
+
+详细部署步骤见 `DEPLOYMENT.md`

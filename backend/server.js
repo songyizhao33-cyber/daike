@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -9,29 +10,12 @@ const matchRoutes = require('./routes/match');
 
 const app = express();
 
-// CORS 配置 - 简化配置，提高兼容性
+// CORS 配置
 app.use(cors({
-  origin: function(origin, callback) {
-    // 允许的来源列表
-    const allowedOrigins = [
-      'https://daike-1.onrender.com',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173'
-    ];
-
-    // 允许没有 origin 的请求（如 Postman、curl）
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(null, false);
-    }
-  },
-  credentials: false, // 改为 false，简化 CORS
+  origin: true,
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200 // 某些浏览器对 204 处理有问题
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -40,12 +24,18 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB 连接成功'))
   .catch(err => console.error('MongoDB 连接失败:', err));
 
+// API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/match', matchRoutes);
 
-app.get('/', (req, res) => {
-  res.json({ message: '代课匹配系统 API' });
+// 服务前端静态文件
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
+
+// SPA 路由支持 - 所有非 API 请求返回 index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;

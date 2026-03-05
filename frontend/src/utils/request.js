@@ -2,12 +2,11 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 // 配置后端 API 地址
-// 生产环境：使用后端服务的 URL
-// 开发环境：使用本地代理（通过 vite.config.js 配置）
+// 生产和开发环境都使用相对路径 /api
 const api = axios.create({
-  baseURL: import.meta.env.DEV ? '/api' : 'https://daike.onrender.com/api',
+  baseURL: '/api',
   timeout: 10000,
-  withCredentials: false, // 改为 false，避免 CORS 复杂化
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json'
   }
