@@ -1,0 +1,32 @@
+# Render 部署配置文件
+# 用于配置前后端服务
+
+services:
+  # 后端服务
+  - type: web
+    name: daike-backend
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false  # 需要在 Render 控制台手动设置
+      - key: JWT_SECRET
+        sync: false  # 需要在 Render 控制台手动设置
+    healthCheckPath: /
+
+  # 前端服务
+  - type: web
+    name: daike-frontend
+    env: static
+    region: singapore
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://daike.onrender.com/api

@@ -17,7 +17,7 @@ app.use(cors({
     'http://127.0.0.1:5173'
   ],
   credentials: true, // 允许携带cookie（如果需要）
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // 允许的请求方法
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // 允许的请求方法
   allowedHeaders: ['Content-Type', 'Authorization'] // 允许的请求头
 }));
 

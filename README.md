@@ -115,3 +115,15 @@ npm run dev
 - 后端使用 nodemon 实现热重载
 - 前端使用 Vite 开发服务器，支持热模块替换
 - 所有 API 请求需要在 Header 中携带 JWT token（除了注册和登录）
+
+## 部署
+
+项目已部署到 Render：
+- 前端：https://daike-1.onrender.com
+- 后端：https://daike.onrender.com
+
+详细部署说明请查看 [DEPLOY.md](./DEPLOY.md)
+
+## 许可证
+
+MIT

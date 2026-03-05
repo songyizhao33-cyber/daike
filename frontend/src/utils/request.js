@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 // 关键修改：直接配置后端URL，同时保留环境变量（开发时可通过.env文件覆盖）
 const api = axios.create({
   // 优先用环境变量（本地开发），没有则用线上后端URL
-  baseURL: import.meta.env.VITE_API_URL || 'https://daike.onrender.com', 
+  baseURL: import.meta.env.VITE_API_URL || 'https://daike.onrender.com/api',
   timeout: 10000,
   withCredentials: true // 配合后端cors的credentials，可选（如果需要传cookie）
 })
