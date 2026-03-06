@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/utils/request'
 import { ElMessage } from 'element-plus'
+import { hashPassword } from '@/utils/crypto'
 
 export const useUserStore = defineStore('user', () => {
   const user = ref(null)
@@ -9,7 +10,9 @@ export const useUserStore = defineStore('user', () => {
 
   const login = async (username, password) => {
     try {
-      const data = await api.post('/auth/login', { username, password })
+      // 对密码进行哈希后再发送
+      const hashedPassword = hashPassword(password)
+      const data = await api.post('/auth/login', { username, password: hashedPassword })
       token.value = data.token
       user.value = data.user
       localStorage.setItem('token', data.token)
@@ -22,7 +25,12 @@ export const useUserStore = defineStore('user', () => {
 
   const register = async (formData) => {
     try {
-      const data = await api.post('/auth/register', formData)
+      // 对密码进行哈希后再发送
+      const hashedFormData = {
+        ...formData,
+        password: hashPassword(formData.password)
+      }
+      const data = await api.post('/auth/register', hashedFormData)
       token.value = data.token
       user.value = data.user
       localStorage.setItem('token', data.token)
