@@ -5,13 +5,15 @@ const Availability = require('../models/Availability');
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { dayOfWeek, periods, isRecurring } = req.body;
+    const { dayOfWeek, periods, isRecurring, campuses, frequencyType } = req.body;
 
     const availability = new Availability({
       userId: req.userId,
       dayOfWeek,
       periods,
-      isRecurring
+      isRecurring,
+      campuses,
+      frequencyType
     });
 
     await availability.save();

@@ -104,4 +104,21 @@ h2 {
 .disclaimer-content p {
   margin: 20px 0;
 }
+
+@media (max-width: 768px) {
+  .login-card {
+    width: 90%;
+    max-width: 400px;
+    padding: 15px;
+  }
+
+  h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .el-dialog {
+    width: 90% !important;
+  }
+}
 </style>

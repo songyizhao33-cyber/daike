@@ -12,21 +12,28 @@
       </el-header>
       <el-main>
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-card shadow="hover" class="menu-card" @click="$router.push('/availability')">
               <el-icon :size="50"><Calendar /></el-icon>
               <h3>管理空闲时间</h3>
               <p>标记和管理你的空闲时间段</p>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="6">
             <el-card shadow="hover" class="menu-card" @click="$router.push('/match')">
               <el-icon :size="50"><Search /></el-icon>
               <h3>寻找代课者</h3>
               <p>发布代课需求，匹配合适的代课者</p>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="6">
+            <el-card shadow="hover" class="menu-card" @click="$router.push('/meal')">
+              <el-icon :size="50"><Orange /></el-icon>
+              <h3>约饭功能</h3>
+              <p>发布约饭信息，寻找饭搭子</p>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="6">
             <el-card shadow="hover" class="menu-card" @click="$router.push('/profile')">
               <el-icon :size="50"><User /></el-icon>
               <h3>个人中心</h3>

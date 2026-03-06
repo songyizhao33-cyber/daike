@@ -1,0 +1,351 @@
+<template>
+  <div class="meal-container">
+    <el-container>
+      <el-header>
+        <div class="header-content">
+          <h1>约饭功能</h1>
+          <el-button @click="$router.push('/home')">返回首页</el-button>
+        </div>
+      </el-header>
+      <el-main>
+        <!-- 发布约饭 -->
+        <el-card>
+          <template #header>
+            <span>发布约饭</span>
+          </template>
+          <el-form :model="form" label-width="100px">
+            <el-form-item label="日期" required>
+              <el-date-picker
+                v-model="form.date"
+                type="date"
+                placeholder="选择日期"
+                style="width: 100%"
+                :disabled-date="disabledDate"
+              />
+            </el-form-item>
+            <el-form-item label="用餐类型" required>
+              <el-radio-group v-model="form.mealType">
+                <el-radio label="breakfast">早餐</el-radio>
+                <el-radio label="lunch">午餐</el-radio>
+                <el-radio label="dinner">晚餐</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="时间" required>
+              <el-select v-model="form.mealTime" placeholder="选择时间" style="width: 100%">
+                <el-option
+                  v-for="time in getAvailableTimes()"
+                  :key="time"
+                  :label="time"
+                  :value="time"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="校区" required>
+              <el-select v-model="form.campus" placeholder="选择校区" style="width: 100%">
+                <el-option label="邯郸" value="邯郸" />
+                <el-option label="枫林" value="枫林" />
+                <el-option label="江湾" value="江湾" />
+                <el-option label="张江" value="张江" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="地点" required>
+              <el-input v-model="form.location" placeholder="例如：食堂一楼" />
+            </el-form-item>
+            <el-form-item label="备注">
+              <el-input v-model="form.note" type="textarea" :rows="3" placeholder="可以写一些额外信息" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handlePublish">发布约饭</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <!-- 浏览约饭 -->
+        <el-card style="margin-top: 20px">
+          <template #header>
+            <div class="card-header">
+              <span>浏览约饭信息</span>
+              <div>
+                <el-date-picker
+                  v-model="filterDate"
+                  type="date"
+                  placeholder="筛选日期"
+                  size="small"
+                  style="margin-right: 10px"
+                  @change="loadAppointments"
+                />
+                <el-select
+                  v-model="filterCampus"
+                  placeholder="筛选校区"
+                  size="small"
+                  clearable
+                  style="width: 120px; margin-right: 10px"
+                  @change="loadAppointments"
+                >
+                  <el-option label="邯郸" value="邯郸" />
+                  <el-option label="枫林" value="枫林" />
+                  <el-option label="江湾" value="江湾" />
+                  <el-option label="张江" value="张江" />
+                </el-select>
+                <el-button type="primary" size="small" @click="loadAppointments">刷新</el-button>
+              </div>
+            </div>
+          </template>
+          <el-table :data="appointments" style="width: 100%">
+            <el-table-column label="日期" width="120">
+              <template #default="{ row }">
+                {{ formatDate(row.date) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="80">
+              <template #default="{ row }">
+                {{ getMealTypeText(row.mealType) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="mealTime" label="时间" width="80" />
+            <el-table-column prop="campus" label="校区" width="80" />
+            <el-table-column prop="location" label="地点" width="150" />
+            <el-table-column prop="note" label="备注" />
+            <el-table-column label="发布者" width="120">
+              <template #default="{ row }">
+                {{ row.userId.username }}
+              </template>
+            </el-table-column>
+            <el-table-column label="联系方式" width="180">
+              <template #default="{ row }">
+                <div>微信: {{ row.userId.profile.wechat || '-' }}</div>
+                <div>邮箱: {{ row.userId.profile.email || '-' }}</div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+
+        <!-- 我的约饭 -->
+        <el-card style="margin-top: 20px">
+          <template #header>
+            <div class="card-header">
+              <span>我的约饭</span>
+              <el-button type="primary" size="small" @click="loadMyAppointments">刷新</el-button>
+            </div>
+          </template>
+          <el-table :data="myAppointments" style="width: 100%">
+            <el-table-column label="日期" width="120">
+              <template #default="{ row }">
+                {{ formatDate(row.date) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="80">
+              <template #default="{ row }">
+                {{ getMealTypeText(row.mealType) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="mealTime" label="时间" width="80" />
+            <el-table-column prop="campus" label="校区" width="80" />
+            <el-table-column prop="location" label="地点" width="150" />
+            <el-table-column prop="note" label="备注" />
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'active' ? 'success' : 'info'">
+                  {{ row.status === 'active' ? '有效' : '已取消' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.status === 'active'"
+                  type="danger"
+                  size="small"
+                  @click="handleCancel(row._id)"
+                >
+                  取消
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-main>
+    </el-container>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import api from '@/utils/request'
+
+const form = ref({
+  date: null,
+  mealType: 'lunch',
+  mealTime: '',
+  campus: '',
+  location: '',
+  note: ''
+})
+
+const appointments = ref([])
+const myAppointments = ref([])
+const filterDate = ref(null)
+const filterCampus = ref('')
+
+const mealTimes = {
+  breakfast: ['07:00', '07:30', '08:00'],
+  lunch: ['11:00', '11:30', '12:00', '12:30'],
+  dinner: ['17:00', '17:30', '18:00', '18:30']
+}
+
+const disabledDate = (time) => {
+  return time.getTime() < Date.now() - 24 * 60 * 60 * 1000
+}
+
+const getAvailableTimes = () => {
+  return mealTimes[form.value.mealType] || []
+}
+
+const getMealTypeText = (type) => {
+  const map = {
+    breakfast: '早餐',
+    lunch: '午餐',
+    dinner: '晚餐'
+  }
+  return map[type] || type
+}
+
+const formatDate = (date) => {
+  return new Date(date).toLocaleDateString('zh-CN')
+}
+
+const handlePublish = async () => {
+  if (!form.value.date) {
+    ElMessage.warning('请选择日期')
+    return
+  }
+  if (!form.value.mealTime) {
+    ElMessage.warning('请选择时间')
+    return
+  }
+  if (!form.value.campus) {
+    ElMessage.warning('请选择校区')
+    return
+  }
+  if (!form.value.location) {
+    ElMessage.warning('请输入地点')
+    return
+  }
+
+  try {
+    await api.post('/meal', form.value)
+    ElMessage.success('发布成功')
+    form.value = {
+      date: null,
+      mealType: 'lunch',
+      mealTime: '',
+      campus: '',
+      location: '',
+      note: ''
+    }
+    loadAppointments()
+    loadMyAppointments()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const loadAppointments = async () => {
+  try {
+    const params = {}
+    if (filterDate.value) {
+      params.date = filterDate.value.toISOString().split('T')[0]
+    }
+    if (filterCampus.value) {
+      params.campus = filterCampus.value
+    }
+
+    const data = await api.get('/meal/browse', { params })
+    appointments.value = data
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const loadMyAppointments = async () => {
+  try {
+    const data = await api.get('/meal/my')
+    myAppointments.value = data
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const handleCancel = async (id) => {
+  try {
+    await api.delete(`/meal/${id}`)
+    ElMessage.success('取消成功')
+    loadMyAppointments()
+    loadAppointments()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  loadAppointments()
+  loadMyAppointments()
+})
+</script>
+
+<style scoped>
+.meal-container {
+  min-height: 100vh;
+}
+
+.el-header {
+  background-color: #409eff;
+  color: white;
+  display: flex;
+  align-items: center;
+}
+
+.header-content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .header-content h1 {
+    font-size: 18px;
+  }
+
+  .el-form-item__label {
+    width: 80px !important;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .el-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+</style>

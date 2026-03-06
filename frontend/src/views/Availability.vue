@@ -15,6 +15,25 @@
               <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
             </div>
           </template>
+
+          <el-form :model="form" label-width="80px" style="margin-bottom: 20px">
+            <el-form-item label="校区" required>
+              <el-checkbox-group v-model="form.campuses">
+                <el-checkbox label="邯郸">邯郸</el-checkbox>
+                <el-checkbox label="枫林">枫林</el-checkbox>
+                <el-checkbox label="江湾">江湾</el-checkbox>
+                <el-checkbox label="张江">张江</el-checkbox>
+              </el-checkbox-group>
+            </el-form-item>
+            <el-form-item label="频率" required>
+              <el-radio-group v-model="form.frequencyType">
+                <el-radio label="long-term">长期</el-radio>
+                <el-radio label="short-term">短期</el-radio>
+                <el-radio label="single">单次</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-form>
+
           <ScheduleSelector v-model="selectedSlots" />
           <div class="selected-info" v-if="selectedSlots.length > 0">
             <el-tag type="success">已选择 {{ selectedSlots.length }} 个时间段</el-tag>
@@ -42,6 +61,16 @@
             <el-table-column label="时间范围">
               <template #default="{ row }">
                 {{ getTimeRange(row.periods) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="校区" width="150">
+              <template #default="{ row }">
+                {{ row.campuses.join(', ') }}
+              </template>
+            </el-table-column>
+            <el-table-column label="频率" width="100">
+              <template #default="{ row }">
+                {{ getFrequencyText(row.frequencyType) }}
               </template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="100">
@@ -74,6 +103,11 @@ const selectedSlots = ref([])
 const availabilities = ref([])
 const saving = ref(false)
 
+const form = ref({
+  campuses: [],
+  frequencyType: 'long-term'
+})
+
 const getDayText = (day) => {
   const dayConfig = SCHEDULE_CONFIG.weekDays.find(d => d.value === day)
   return dayConfig ? dayConfig.label : ''
@@ -81,6 +115,15 @@ const getDayText = (day) => {
 
 const getTimeRange = (periods) => {
   return getPeriodsTimeRange(periods)
+}
+
+const getFrequencyText = (type) => {
+  const map = {
+    'long-term': '长期',
+    'short-term': '短期',
+    'single': '单次'
+  }
+  return map[type] || type
 }
 
 const loadAvailabilities = async () => {
@@ -109,6 +152,16 @@ const handleSave = async () => {
     return
   }
 
+  if (form.value.campuses.length === 0) {
+    ElMessage.warning('请选择至少一个校区')
+    return
+  }
+
+  if (!form.value.frequencyType) {
+    ElMessage.warning('请选择频率类型')
+    return
+  }
+
   saving.value = true
   try {
     // 按星期分组
@@ -130,7 +183,9 @@ const handleSave = async () => {
       await api.post('/availability', {
         dayOfWeek: parseInt(day),
         periods: periods.sort((a, b) => a - b),
-        isRecurring: true
+        isRecurring: true,
+        campuses: form.value.campuses,
+        frequencyType: form.value.frequencyType
       })
     }
 
@@ -191,5 +246,24 @@ onMounted(() => {
 .selected-info {
   margin-top: 20px;
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .header-content h1 {
+    font-size: 18px;
+  }
+
+  .el-form-item__label {
+    width: 60px !important;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .el-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 }
 </style>

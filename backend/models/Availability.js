@@ -20,6 +20,18 @@ const availabilitySchema = new mongoose.Schema({
     min: 1,
     max: 14
   }],
+  // 校区 (可多选)
+  campuses: [{
+    type: String,
+    enum: ['邯郸', '枫林', '江湾', '张江'],
+    required: true
+  }],
+  // 频率类型
+  frequencyType: {
+    type: String,
+    enum: ['long-term', 'short-term', 'single'],
+    required: true
+  },
   // 是否长期有效
   isRecurring: {
     type: Boolean,

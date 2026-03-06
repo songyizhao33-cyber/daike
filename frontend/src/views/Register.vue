@@ -123,4 +123,21 @@ h2 {
   margin-bottom: 30px;
   color: #333;
 }
+
+@media (max-width: 768px) {
+  .register-card {
+    width: 95%;
+    max-width: 500px;
+    padding: 15px;
+  }
+
+  h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .el-form-item__label {
+    font-size: 14px;
+  }
+}
 </style>

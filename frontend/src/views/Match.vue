@@ -15,6 +15,21 @@
           <ScheduleSelector v-model="selectedSlots" />
 
           <el-form :model="form" label-width="100px" style="margin-top: 20px">
+            <el-form-item label="校区" required>
+              <el-select v-model="form.campus" placeholder="请选择校区" style="width: 100%">
+                <el-option label="邯郸" value="邯郸" />
+                <el-option label="枫林" value="枫林" />
+                <el-option label="江湾" value="江湾" />
+                <el-option label="张江" value="张江" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="频率" required>
+              <el-radio-group v-model="form.frequencyType">
+                <el-radio label="long-term">长期</el-radio>
+                <el-radio label="short-term">短期</el-radio>
+                <el-radio label="single">单次</el-radio>
+              </el-radio-group>
+            </el-form-item>
             <el-form-item label="课程名称">
               <el-input v-model="form.courseInfo.courseName" />
             </el-form-item>
@@ -95,6 +110,12 @@
               </template>
             </el-table-column>
             <el-table-column prop="courseInfo.courseName" label="课程" width="150" />
+            <el-table-column prop="campus" label="校区" width="100" />
+            <el-table-column label="频率" width="100">
+              <template #default="{ row }">
+                {{ getFrequencyText(row.frequencyType) }}
+              </template>
+            </el-table-column>
             <el-table-column label="匹配人数" width="100">
               <template #default="{ row }">
                 {{ row.matchedSubstitutes.length }}
@@ -129,6 +150,8 @@ import { SCHEDULE_CONFIG, getPeriodsTimeRange } from '@/utils/schedule'
 const selectedSlots = ref([])
 
 const form = ref({
+  campus: '',
+  frequencyType: 'long-term',
   courseInfo: {
     courseName: '',
     location: '',
@@ -160,6 +183,16 @@ const handleSearch = async () => {
     return
   }
 
+  if (!form.value.campus) {
+    ElMessage.warning('请选择校区')
+    return
+  }
+
+  if (!form.value.frequencyType) {
+    ElMessage.warning('请选择频率类型')
+    return
+  }
+
   // 按星期分组
   const groupedByDay = {}
   selectedSlots.value.forEach(slot => {
@@ -179,6 +212,8 @@ const handleSearch = async () => {
         dayOfWeek: parseInt(day),
         periods: periods.sort((a, b) => a - b),
         courseInfo: form.value.courseInfo,
+        campus: form.value.campus,
+        frequencyType: form.value.frequencyType,
         filters: form.value.filters
       })
       requests.push(data)
@@ -237,6 +272,15 @@ const getStatusText = (status) => {
   return texts[status] || status
 }
 
+const getFrequencyText = (type) => {
+  const map = {
+    'long-term': '长期',
+    'short-term': '短期',
+    'single': '单次'
+  }
+  return map[type] || type
+}
+
 onMounted(() => {
   loadMyRequests()
 })
@@ -270,5 +314,30 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  .header-content h1 {
+    font-size: 18px;
+  }
+
+  .el-form-item__label {
+    width: 80px !important;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .el-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }
 </style>

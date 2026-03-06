@@ -67,4 +67,18 @@ const getGenderText = (gender) => {
   max-width: 600px;
   margin: 0 auto;
 }
+
+@media (max-width: 768px) {
+  .header-content h1 {
+    font-size: 18px;
+  }
+
+  .profile-card {
+    max-width: 100%;
+  }
+
+  .el-descriptions {
+    font-size: 14px;
+  }
+}
 </style>

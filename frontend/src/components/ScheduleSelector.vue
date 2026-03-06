@@ -239,4 +239,33 @@ if (typeof window !== 'undefined') {
 .course-cell.selecting {
   background-color: #a0cfff;
 }
+
+@media (max-width: 768px) {
+  .period-column {
+    width: 60px;
+    min-width: 60px;
+  }
+
+  .day-column {
+    width: 70px;
+    min-width: 70px;
+  }
+
+  .header-cell {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+
+  .period-number {
+    font-size: 14px;
+  }
+
+  .period-time {
+    font-size: 9px;
+  }
+
+  .course-cell {
+    min-height: 50px;
+  }
+}
 </style>

@@ -25,6 +25,18 @@ const matchRequestSchema = new mongoose.Schema({
     location: String,
     description: String
   },
+  // 校区 (单选)
+  campus: {
+    type: String,
+    enum: ['邯郸', '枫林', '江湾', '张江'],
+    required: true
+  },
+  // 频率类型
+  frequencyType: {
+    type: String,
+    enum: ['long-term', 'short-term', 'single'],
+    required: true
+  },
   filters: {
     gender: String,
     major: String,

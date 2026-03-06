@@ -48,29 +48,46 @@ npm run preview      # 预览生产构建
 **User（用户）**
 - username, password（bcrypt 加密）
 - role: substitute（代课者）| requester（需求者）| both
-- profile: gender, major, grade, phone, email
+- profile: gender, major, grade, phone, email, wechat
 
 **Availability（空闲时间）**
-- userId, date, startTime, endTime
+- userId, dayOfWeek, periods
+- campuses（校区数组，可多选）
+- frequencyType: long-term | short-term | single
 - isRecurring（是否长期重复）
-- recurringDays（重复的星期几，0-6）
 - status: available | booked | cancelled
 
 **MatchRequest（匹配请求）**
-- requesterId, date, startTime, endTime
+- requesterId, dayOfWeek, periods
 - courseInfo（课程信息）
+- campus（校区，单选）
+- frequencyType: long-term | short-term | single
 - filters（筛选条件：gender, major, grade）
 - matchedSubstitutes（匹配到的代课者数组）
 - selectedSubstitute（选中的代课者）
 - status: pending | matched | completed | cancelled
 
+**MealAppointment（约饭）**
+- userId, date, mealTime, mealType
+- campus（校区）
+- location（地点）
+- note（备注）
+- status: active | cancelled
+
 ### 匹配逻辑
 
 匹配算法位于 `backend/routes/match.js`：
-1. 查找指定日期和时间段内的空闲时间记录
-2. 同时查找长期重复且匹配星期几的记录
+1. 查找指定星期几和时间段内的空闲时间记录
+2. 根据校区进行匹配（需求者选择的校区必须在代课者的校区列表中）
 3. 根据 filters（性别、专业、年级）过滤代课者
 4. 返回匹配结果供需求者选择
+
+### 约饭功能
+
+约饭功能位于 `backend/routes/meal.js`：
+1. 用户可以发布约饭信息（日期、时间、校区、地点）
+2. 其他用户可以浏览约饭信息并查看发布者的联系方式
+3. 时间段分为早餐（7:00-8:00）、午餐（11:00-12:30）、晚餐（17:00-18:30）
 
 ### 认证流程
 

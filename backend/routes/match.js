@@ -48,12 +48,13 @@ function calculateMatchScore(availability, request, userProfile, filters) {
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { dayOfWeek, periods, courseInfo, filters } = req.body;
+    const { dayOfWeek, periods, courseInfo, filters, campus, frequencyType } = req.body;
 
     // 查找该星期几有空的代课者
     const availabilities = await Availability.find({
       dayOfWeek: dayOfWeek,
-      status: 'available'
+      status: 'available',
+      campuses: campus // 校区匹配
     }).populate('userId');
 
     // 计算匹配分数
@@ -97,6 +98,8 @@ router.post('/', authMiddleware, async (req, res) => {
       dayOfWeek,
       periods,
       courseInfo,
+      campus,
+      frequencyType,
       filters,
       matchedSubstitutes
     });
