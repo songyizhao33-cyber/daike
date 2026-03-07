@@ -46,8 +46,8 @@ npm run preview      # 预览生产构建
 ### 数据模型
 
 **User（用户）**
-- username, password（bcrypt 加密）
-- role: substitute（代课者）| requester（需求者）| both
+- username, password（前端SHA256传输 + 后端bcrypt加盐哈希存储）
+- role: substitute（代课者）| requester（需求者）| both | admin（管理员）
 - profile: gender, major, grade, phone, email, wechat
 
 **Availability（空闲时间）**
@@ -63,7 +63,7 @@ npm run preview      # 预览生产构建
 - campus（校区，单选）
 - frequencyType: long-term | short-term | single
 - filters（筛选条件：gender, major, grade）
-- matchedSubstitutes（匹配到的代课者数组）
+- matchedSubstitutes（匹配到的代课者数组，包含contactViewed和contactViewedAt字段）
 - selectedSubstitute（选中的代课者）
 - status: pending | matched | completed | cancelled
 
@@ -87,14 +87,37 @@ npm run preview      # 预览生产构建
 约饭功能位于 `backend/routes/meal.js`：
 1. 用户可以发布约饭信息（日期、时间、校区、地点）
 2. 其他用户可以浏览约饭信息并查看发布者的联系方式
-3. 时间段分为早餐（7:00-8:00）、午餐（11:00-12:30）、晚餐（17:00-18:30）
+3. 时间段分为早餐（7:00-8:00）、午餐（11:00-12:30）、晚餐（17:00-20:00）
+
+### 安全机制
+
+**密码安全**
+- 前端使用SHA256对密码进行哈希后传输
+- 后端使用bcrypt对接收到的哈希值再次加盐哈希存储
+- 双重加密确保密码安全
+
+**防止批量获取联系方式**
+- 匹配请求有频率限制（每小时最多10次）
+- 只有选择代课者后才能查看联系方式
+- 记录联系方式查看日志（contactViewed, contactViewedAt）
+
+**用户账号管理**
+- 用户可以在个人中心自主注销账号
+- 注销时会删除所有相关数据（空闲时间、匹配请求、约饭信息）
+
+**管理员功能**
+- 管理员可以查看所有用户数据和平台统计
+- 管理员可以删除普通用户账号（不能删除其他管理员）
+- 管理员后台路由：`/api/admin`，需要adminAuth中间件验证
 
 ### 认证流程
 
 - 使用 JWT token 进行身份认证
+- 密码前端SHA256哈希传输，后端bcrypt加盐存储
 - token 存储在 localStorage
 - 前端请求拦截器自动添加 Authorization header
 - 后端 authMiddleware 验证 token 并提取 userId
+- 管理员路由使用 adminAuthMiddleware 验证管理员权限
 
 ## 环境配置
 

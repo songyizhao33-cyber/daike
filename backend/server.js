@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const availabilityRoutes = require('./routes/availability');
 const matchRoutes = require('./routes/match');
 const mealRoutes = require('./routes/meal');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/match', matchRoutes);
 app.use('/api/meal', mealRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 服务前端静态文件
 const frontendPath = path.join(__dirname, '../frontend/dist');

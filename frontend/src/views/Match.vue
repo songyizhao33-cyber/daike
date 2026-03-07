@@ -71,8 +71,6 @@
             </el-table-column>
             <el-table-column prop="userId.profile.major" label="专业" />
             <el-table-column prop="userId.profile.grade" label="年级" width="100" />
-            <el-table-column prop="userId.profile.wechat" label="微信号" width="150" />
-            <el-table-column prop="userId.profile.email" label="邮箱" width="180" />
             <el-table-column label="匹配度" width="100">
               <template #default="{ row }">
                 <el-tag type="success">{{ row.matchScore }}%</el-tag>
@@ -84,6 +82,14 @@
               </template>
             </el-table-column>
           </el-table>
+          <el-alert
+            title="隐私保护提示"
+            type="info"
+            :closable="false"
+            style="margin-top: 15px"
+          >
+            为保护用户隐私，联系方式仅在您选择代课者后显示
+          </el-alert>
         </el-card>
 
         <el-card style="margin-top: 20px">

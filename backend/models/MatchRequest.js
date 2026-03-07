@@ -47,7 +47,12 @@ const matchRequestSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
-    matchScore: Number
+    matchScore: Number,
+    contactViewed: {
+      type: Boolean,
+      default: false
+    },
+    contactViewedAt: Date
   }],
   selectedSubstitute: {
     type: mongoose.Schema.Types.ObjectId,

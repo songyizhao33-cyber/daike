@@ -29,6 +29,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: '无效的角色类型' });
     }
 
+    // 前端发送的是SHA256哈希值，后端使用bcrypt加盐哈希存储
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 清理 profile 数据，移除空字符串
@@ -81,6 +82,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: '用户名或密码错误' });
     }
 
+    // 前端发送的是SHA256哈希值，后端再次使用bcrypt验证
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: '用户名或密码错误' });
@@ -156,6 +158,33 @@ router.put('/profile', async (req, res) => {
         profile: user.profile
       }
     });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
+// 用户注销账号
+router.delete('/account', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: '未授权' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    // 删除用户相关的所有数据
+    const Availability = require('../models/Availability');
+    const MatchRequest = require('../models/MatchRequest');
+    const MealAppointment = require('../models/MealAppointment');
+
+    await Availability.deleteMany({ userId });
+    await MatchRequest.deleteMany({ requesterId: userId });
+    await MealAppointment.deleteMany({ userId });
+    await User.findByIdAndDelete(userId);
+
+    res.json({ message: '账号已注销' });
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });
   }

@@ -71,6 +71,15 @@
             </el-form-item>
           </el-form>
         </el-card>
+
+        <!-- 危险操作区域 -->
+        <el-card class="danger-zone" style="margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+          <template #header>
+            <span style="color: #f56c6c;">危险操作</span>
+          </template>
+          <el-button type="danger" @click="handleDeleteAccount">注销账号</el-button>
+          <div class="form-tip" style="margin-top: 10px;">注销账号后，您的所有数据将被永久删除且无法恢复</div>
+        </el-card>
       </el-main>
     </el-container>
   </div>
@@ -78,10 +87,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 
+const router = useRouter()
 const userStore = useUserStore()
 const isEditing = ref(false)
 const saving = ref(false)
@@ -157,6 +168,30 @@ const saveProfile = async () => {
     saving.value = false
   }
 }
+
+const handleDeleteAccount = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '注销账号后，您的所有数据（包括空闲时间、匹配请求、约饭信息等）将被永久删除且无法恢复。确定要继续吗？',
+      '确认注销账号',
+      {
+        confirmButtonText: '确定注销',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+
+    await api.delete('/auth/account')
+    ElMessage.success('账号已注销')
+    userStore.logout()
+    router.push('/login')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -193,6 +228,10 @@ const saveProfile = async () => {
   font-size: 12px;
   color: #909399;
   margin-top: 5px;
+}
+
+.danger-zone {
+  border: 1px solid #f56c6c;
 }
 
 @media (max-width: 768px) {
