@@ -94,7 +94,10 @@
           <el-table :data="appointments" style="width: 100%">
             <el-table-column label="日期" width="120">
               <template #default="{ row }">
-                {{ formatDate(row.date) }}
+                <div :class="{ 'expired-text': isExpired(row.date) }">
+                  {{ formatDate(row.date) }}
+                  <el-tag v-if="isExpired(row.date)" type="info" size="small" style="margin-left: 5px">已过期</el-tag>
+                </div>
               </template>
             </el-table-column>
             <el-table-column label="类型" width="80">
@@ -150,15 +153,22 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100">
+            <el-table-column label="操作" width="150">
               <template #default="{ row }">
                 <el-button
                   v-if="row.status === 'active'"
-                  type="danger"
+                  type="warning"
                   size="small"
                   @click="handleCancel(row._id)"
                 >
                   取消
+                </el-button>
+                <el-button
+                  type="danger"
+                  size="small"
+                  @click="handleDelete(row._id)"
+                >
+                  删除
                 </el-button>
               </template>
             </el-table-column>
@@ -171,7 +181,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 
 const form = ref({
@@ -191,7 +201,7 @@ const filterCampus = ref('')
 const mealTimes = {
   breakfast: ['07:00', '07:30', '08:00'],
   lunch: ['11:00', '11:30', '12:00', '12:30'],
-  dinner: ['17:00', '17:30', '18:00', '18:30']
+  dinner: ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00']
 }
 
 const disabledDate = (time) => {
@@ -213,6 +223,10 @@ const getMealTypeText = (type) => {
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('zh-CN')
+}
+
+const isExpired = (date) => {
+  return new Date(date) < new Date()
 }
 
 const handlePublish = async () => {
@@ -279,12 +293,35 @@ const loadMyAppointments = async () => {
 
 const handleCancel = async (id) => {
   try {
-    await api.delete(`/meal/${id}`)
+    await api.put(`/meal/${id}/cancel`)
     ElMessage.success('取消成功')
     loadMyAppointments()
     loadAppointments()
   } catch (error) {
     console.error(error)
+  }
+}
+
+const handleDelete = async (id) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除这条约饭信息吗？删除后无法恢复。',
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await api.delete(`/meal/${id}`)
+    ElMessage.success('删除成功')
+    loadMyAppointments()
+    loadAppointments()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
   }
 }
 
@@ -322,6 +359,10 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.expired-text {
+  color: #909399;
 }
 
 @media (max-width: 768px) {
