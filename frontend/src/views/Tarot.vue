@@ -82,7 +82,18 @@ const drawnCard = ref(null);
 const drawCard = async () => {
   loading.value = true;
   try {
-    const data = await request.post('/tarot/draw');
+    let data;
+    try {
+      data = await request.post('/tarot/draw');
+    } catch (error) {
+      // Auto initialize tarot data on first run, then retry once.
+      if (error.response?.status === 404) {
+        await request.post('/tarot/initialize');
+        data = await request.post('/tarot/draw');
+      } else {
+        throw error;
+      }
+    }
     // request 已经返回 response.data，所以直接使用 data.tarot
     drawnCard.value = data.tarot;
   } catch (error) {
