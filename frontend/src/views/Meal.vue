@@ -120,6 +120,35 @@
                 <div>邮箱: {{ row.userId.profile.email || '-' }}</div>
               </template>
             </el-table-column>
+            <el-table-column label="感兴趣" width="100">
+              <template #default="{ row }">
+                <el-tag v-if="row.interestedUsers && row.interestedUsers.length > 0" type="success">
+                  {{ row.interestedUsers.length }} 人
+                </el-tag>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120">
+              <template #default="{ row }">
+                <el-button
+                  v-if="!isMyAppointment(row) && !hasExpressedInterest(row)"
+                  type="primary"
+                  size="small"
+                  @click="handleExpressInterest(row._id)"
+                >
+                  约一个
+                </el-button>
+                <el-button
+                  v-else-if="!isMyAppointment(row) && hasExpressedInterest(row)"
+                  type="info"
+                  size="small"
+                  @click="handleCancelInterest(row._id)"
+                >
+                  取消兴趣
+                </el-button>
+                <el-tag v-else type="info" size="small">我的约饭</el-tag>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
 
@@ -153,6 +182,19 @@
                 </el-tag>
               </template>
             </el-table-column>
+            <el-table-column label="感兴趣的人" width="120">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.interestedUsers && row.interestedUsers.length > 0"
+                  type="success"
+                  size="small"
+                  @click="showInterestedUsers(row)"
+                >
+                  {{ row.interestedUsers.length }} 人
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="150">
               <template #default="{ row }">
                 <el-button
@@ -176,6 +218,30 @@
         </el-card>
       </el-main>
     </el-container>
+
+    <!-- 感兴趣用户对话框 -->
+    <el-dialog
+      v-model="interestedDialogVisible"
+      title="感兴趣的用户"
+      width="600px"
+    >
+      <el-table :data="currentInterestedUsers" style="width: 100%">
+        <el-table-column prop="userId.username" label="用户名" width="120" />
+        <el-table-column label="性别" width="80">
+          <template #default="{ row }">
+            {{ row.userId.profile.gender === 'male' ? '男' : row.userId.profile.gender === 'female' ? '女' : '其他' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="userId.profile.major" label="专业" />
+        <el-table-column prop="userId.profile.grade" label="年级" width="100" />
+        <el-table-column label="联系方式" width="180">
+          <template #default="{ row }">
+            <div>微信: {{ row.userId.profile.wechat || '-' }}</div>
+            <div>邮箱: {{ row.userId.profile.email || '-' }}</div>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -183,6 +249,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const form = ref({
   date: null,
@@ -197,6 +266,8 @@ const appointments = ref([])
 const myAppointments = ref([])
 const filterDate = ref(null)
 const filterCampus = ref('')
+const interestedDialogVisible = ref(false)
+const currentInterestedUsers = ref([])
 
 const mealTimes = {
   breakfast: ['07:00', '07:30', '08:00'],
@@ -285,7 +356,11 @@ const loadAppointments = async () => {
 const loadMyAppointments = async () => {
   try {
     const data = await api.get('/meal/my')
-    myAppointments.value = data
+    // 确保每个约饭都有 interestedUsers 数组
+    myAppointments.value = data.map(item => ({
+      ...item,
+      interestedUsers: item.interestedUsers || []
+    }))
   } catch (error) {
     console.error(error)
   }
@@ -323,6 +398,47 @@ const handleDelete = async (id) => {
       console.error(error)
     }
   }
+}
+
+// 判断是否是我的约饭
+const isMyAppointment = (appointment) => {
+  return appointment.userId._id === userStore.user?.id
+}
+
+// 判断是否已表达兴趣
+const hasExpressedInterest = (appointment) => {
+  if (!appointment.interestedUsers) return false
+  return appointment.interestedUsers.some(
+    item => item.userId._id === userStore.user?.id
+  )
+}
+
+// 表达兴趣
+const handleExpressInterest = async (id) => {
+  try {
+    await api.post(`/meal/${id}/interest`)
+    ElMessage.success('已表达兴趣')
+    loadAppointments()
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  }
+}
+
+// 取消兴趣
+const handleCancelInterest = async (id) => {
+  try {
+    await api.delete(`/meal/${id}/interest`)
+    ElMessage.success('已取消兴趣')
+    loadAppointments()
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  }
+}
+
+// 显示感兴趣的用户
+const showInterestedUsers = (appointment) => {
+  currentInterestedUsers.value = appointment.interestedUsers || []
+  interestedDialogVisible.value = true
 }
 
 onMounted(() => {

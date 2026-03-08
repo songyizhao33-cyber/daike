@@ -9,6 +9,10 @@ const availabilityRoutes = require('./routes/availability');
 const matchRoutes = require('./routes/match');
 const mealRoutes = require('./routes/meal');
 const adminRoutes = require('./routes/admin');
+const notificationRoutes = require('./routes/notification');
+const tarotRoutes = require('./routes/tarot');
+const feedbackRoutes = require('./routes/feedback');
+const reviewRoutes = require('./routes/review');
 
 const app = express();
 
@@ -32,6 +36,13 @@ app.use('/api/availability', availabilityRoutes);
 app.use('/api/match', matchRoutes);
 app.use('/api/meal', mealRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notification', notificationRoutes);
+app.use('/api/tarot', tarotRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/review', reviewRoutes);
+
+// 提供塔罗牌图片静态文件
+app.use('/tarot-images', express.static(path.join(__dirname, '../塔罗牌')));
 
 // 服务前端静态文件
 const frontendPath = path.join(__dirname, '../frontend/dist');

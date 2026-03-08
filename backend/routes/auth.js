@@ -3,6 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const ActivityLog = require('../models/ActivityLog');
+const authMiddleware = require('../middleware/auth');
 
 router.post('/register', async (req, res) => {
   try {
@@ -52,6 +54,14 @@ router.post('/register', async (req, res) => {
 
     await user.save();
 
+    // 记录活动日志
+    await ActivityLog.create({
+      userId: user._id,
+      actionType: 'register',
+      description: '用户注册',
+      metadata: { username, role: user.role }
+    });
+
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET,
@@ -93,6 +103,13 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // 记录活动日志
+    await ActivityLog.create({
+      userId: user._id,
+      actionType: 'login',
+      description: '用户登录'
+    });
 
     res.json({
       message: '登录成功',
@@ -149,6 +166,14 @@ router.put('/profile', async (req, res) => {
       return res.status(404).json({ message: '用户不存在' });
     }
 
+    // 记录活动日志
+    await ActivityLog.create({
+      userId,
+      actionType: 'update_profile',
+      description: '更新个人信息',
+      metadata: { role: user.role }
+    });
+
     res.json({
       message: '更新成功',
       user: {
@@ -178,13 +203,55 @@ router.delete('/account', async (req, res) => {
     const Availability = require('../models/Availability');
     const MatchRequest = require('../models/MatchRequest');
     const MealAppointment = require('../models/MealAppointment');
+    const Notification = require('../models/Notification');
 
     await Availability.deleteMany({ userId });
     await MatchRequest.deleteMany({ requesterId: userId });
     await MealAppointment.deleteMany({ userId });
+    await Notification.deleteMany({ userId });
+    await ActivityLog.deleteMany({ userId });
+
+    // 记录删除账号日志（在删除前）
+    await ActivityLog.create({
+      userId,
+      actionType: 'delete_account',
+      description: '用户注销账号'
+    });
+
     await User.findByIdAndDelete(userId);
 
     res.json({ message: '账号已注销' });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
+// 获取用户自己的活动历史记录
+router.get('/activity-log', authMiddleware, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, actionType } = req.query;
+
+    const query = { userId: req.userId };
+    if (actionType) {
+      query.actionType = actionType;
+    }
+
+    const logs = await ActivityLog.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await ActivityLog.countDocuments(query);
+
+    res.json({
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });
   }

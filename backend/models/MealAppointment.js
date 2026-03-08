@@ -48,6 +48,17 @@ const mealAppointmentSchema = new mongoose.Schema({
     enum: ['active', 'cancelled'],
     default: 'active'
   },
+  // 感兴趣的用户列表
+  interestedUsers: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    expressedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

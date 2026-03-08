@@ -69,8 +69,15 @@
                 {{ formatDate(row.createdAt) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="150">
+            <el-table-column label="操作" width="200">
               <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="handleViewUser(row)"
+                >
+                  查看详情
+                </el-button>
                 <el-button
                   type="danger"
                   size="small"
@@ -94,6 +101,46 @@
         </el-card>
       </el-main>
     </el-container>
+
+    <!-- 用户详情对话框 -->
+    <el-dialog
+      v-model="userDetailVisible"
+      title="用户详情"
+      width="800px"
+    >
+      <el-descriptions :column="2" border v-if="currentUser">
+        <el-descriptions-item label="用户名">{{ currentUser.username }}</el-descriptions-item>
+        <el-descriptions-item label="角色">{{ getRoleText(currentUser.role) }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ getGenderText(currentUser.profile?.gender) }}</el-descriptions-item>
+        <el-descriptions-item label="专业">{{ currentUser.profile?.major || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="年级">{{ currentUser.profile?.grade || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="手机">{{ currentUser.profile?.phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="微信">{{ currentUser.profile?.wechat || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ currentUser.profile?.email || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="注册时间" :span="2">{{ formatDate(currentUser.createdAt) }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-tabs v-model="activeTab" style="margin-top: 20px">
+        <el-tab-pane label="活动历史" name="activity">
+          <el-table :data="activityLogs" max-height="400">
+            <el-table-column prop="actionType" label="操作类型" width="150" />
+            <el-table-column prop="description" label="描述" />
+            <el-table-column label="时间" width="180">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdAt) }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="发布内容" name="content">
+          <div v-if="contentHistory">
+            <h4>空闲时间（{{ contentHistory.availabilities?.length || 0 }}）</h4>
+            <h4 style="margin-top: 20px">匹配请求（{{ contentHistory.matchRequests?.length || 0 }}）</h4>
+            <h4 style="margin-top: 20px">约饭信息（{{ contentHistory.mealAppointments?.length || 0 }}）</h4>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </el-dialog>
   </div>
 </template>
 
@@ -114,6 +161,11 @@ const loading = ref(false)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const total = ref(0)
+const userDetailVisible = ref(false)
+const currentUser = ref(null)
+const activeTab = ref('activity')
+const activityLogs = ref([])
+const contentHistory = ref(null)
 
 onMounted(() => {
   loadStats()
@@ -173,6 +225,32 @@ const handleDeleteUser = async (user) => {
       console.error(error)
     }
   }
+}
+
+const handleViewUser = async (user) => {
+  currentUser.value = user
+  userDetailVisible.value = true
+  activeTab.value = 'activity'
+
+  // 加载活动历史
+  try {
+    const data = await api.get(`/admin/users/${user._id}/activity-log`)
+    activityLogs.value = data.logs
+  } catch (error) {
+    console.error(error)
+  }
+
+  // 加载发布内容历史
+  try {
+    const data = await api.get(`/admin/users/${user._id}/content-history`)
+    contentHistory.value = data
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const formatDateTime = (date) => {
+  return new Date(date).toLocaleString('zh-CN')
 }
 
 const getRoleText = (role) => {

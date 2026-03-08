@@ -46,6 +46,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/tarot',
+    name: 'Tarot',
+    component: () => import('@/views/Tarot.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feedback',
+    name: 'Feedback',
+    component: () => import('@/views/Feedback.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('@/views/Admin.vue'),

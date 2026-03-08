@@ -32,13 +32,14 @@ npm run preview      # 预览生产构建
 ## 项目架构
 
 ### 后端架构
-- `models/` - Mongoose 数据模型（User, Availability, MatchRequest）
-- `routes/` - Express 路由处理器（auth, availability, match）
+- `models/` - Mongoose 数据模型（User, Availability, MatchRequest, MealAppointment, ActivityLog, Notification, Tarot, Feedback, Review）
+- `routes/` - Express 路由处理器（auth, availability, match, meal, admin, notification, tarot, feedback, review）
 - `middleware/` - 中间件（JWT 认证）
 - `server.js` - 应用入口
+- `scripts/` - 初始化脚本（initTarot.js）
 
 ### 前端架构
-- `views/` - 页面组件（Login, Register, Home, Availability, Match）
+- `views/` - 页面组件（Login, Register, Home, Availability, Match, Meal, Tarot, Feedback, Profile, Admin）
 - `stores/` - Pinia 状态管理（user store）
 - `router/` - Vue Router 路由配置
 - `utils/request.js` - Axios 封装，包含请求拦截器
@@ -64,6 +65,7 @@ npm run preview      # 预览生产构建
 - frequencyType: long-term | short-term | single
 - filters（筛选条件：gender, major, grade）
 - matchedSubstitutes（匹配到的代课者数组，包含contactViewed和contactViewedAt字段）
+- viewedBySubstitutes（被代课者查看的记录数组）
 - selectedSubstitute（选中的代课者）
 - status: pending | matched | completed | cancelled
 
@@ -72,7 +74,39 @@ npm run preview      # 预览生产构建
 - campus（校区）
 - location（地点）
 - note（备注）
+- interestedUsers（感兴趣的用户数组，包含userId和expressedAt）
 - status: active | cancelled
+
+**ActivityLog（活动日志）**
+- userId, actionType, description
+- relatedId, relatedModel（关联的资源）
+- metadata（额外元数据）
+- createdAt
+
+**Notification（通知）**
+- userId, type, title, content
+- relatedId, fromUserId
+- isRead（是否已读）
+- createdAt
+
+**Tarot（塔罗牌）**
+- name, imageFile, order
+- uprightMeaning（正位解释）
+- reversedMeaning（逆位解释）
+
+**Feedback（反馈信箱）**
+- userId, type, title, content
+- contactInfo（联系方式）
+- status: pending | read | replied | resolved
+- adminReply（管理员回复）
+
+**Review（回访记录）**
+- userId, type, relatedId
+- rating（评分1-5）
+- experience（体验：excellent | good | average | poor | terrible）
+- comment（详细反馈）
+- willUseAgain（是否愿意再次使用）
+- suggestions（建议）
 
 ### 匹配逻辑
 
@@ -90,6 +124,52 @@ npm run preview      # 预览生产构建
 3. 时间段分为早餐（7:00-8:00）、午餐（11:00-12:30）、晚餐（17:00-20:00）
 4. 智能排序：未过期的按时间从近到远，已过期的放最后并标记
 5. 用户可以取消（标记为已取消）或删除（永久删除）自己发布的约饭
+6. 用户可以点击"约一个"按钮表达对约饭的兴趣
+7. 发布者可以查看谁对自己的约饭感兴趣，并获取对方联系方式
+
+### 塔罗牌功能
+
+塔罗牌功能位于 `backend/routes/tarot.js`：
+1. 用户可以抽取一张塔罗牌
+2. 随机决定正位或逆位
+3. 显示对应的牌意解释
+4. 星辰正位有特殊祝福消息
+5. 记录抽牌历史到活动日志
+
+### 双向通知机制
+
+代课匹配双向通知功能：
+1. 需求者选择代课者时，代课者会收到通知
+2. 代课者可以查看匹配到自己的请求
+3. 代课者查看请求详情时，需求者会收到通知
+4. 通知系统记录所有互动
+
+### 活动日志和历史记录
+
+活动日志功能位于 `backend/models/ActivityLog.js`：
+1. 记录用户的所有重要操作（注册、登录、发布内容等）
+2. 用户可以在个人中心查看自己的操作历史
+3. 管理员可以查看任何用户的活动历史和发布内容
+4. 支持分页和按操作类型筛选
+
+### 反馈信箱系统
+
+反馈信箱功能位于 `backend/routes/feedback.js`：
+1. 用户可以提交反馈（Bug、功能建议、使用建议、其他）
+2. 用户可以查看自己的反馈历史和状态
+3. 管理员可以查看所有反馈
+4. 管理员可以回复反馈和标记状态
+5. 反馈状态：待处理、已读、已回复、已解决
+
+### 回访系统
+
+回访功能位于 `backend/routes/review.js`：
+1. 用户完成代课或约饭后可以提交回访
+2. 评分系统（1-5星）和体验评价
+3. 详细反馈和改进建议
+4. 是否愿意再次使用的调查
+5. 管理员可以查看回访统计数据（平均评分、体验分布、再次使用率）
+6. 防止重复提交回访
 
 ### 安全机制
 
@@ -110,6 +190,7 @@ npm run preview      # 预览生产构建
 **管理员功能**
 - 管理员可以查看所有用户数据和平台统计
 - 管理员可以删除普通用户账号（不能删除其他管理员）
+- 管理员可以查看用户详细信息、活动历史和发布内容
 - 管理员后台路由：`/api/admin`，需要adminAuth中间件验证
 
 ### 认证流程

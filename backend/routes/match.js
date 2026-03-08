@@ -3,6 +3,8 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const MatchRequest = require('../models/MatchRequest');
 const Availability = require('../models/Availability');
+const Notification = require('../models/Notification');
+const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
 
 // 请求频率限制：每个用户每小时最多创建10个匹配请求
@@ -130,6 +132,16 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await matchRequest.save();
 
+    // 记录活动日志
+    await ActivityLog.create({
+      userId: req.userId,
+      actionType: 'create_match_request',
+      description: `创建匹配请求：星期${dayOfWeek}，${periods.length}节课`,
+      relatedId: matchRequest._id,
+      relatedModel: 'MatchRequest',
+      metadata: { dayOfWeek, periods, campus, frequencyType }
+    });
+
     // 填充用户信息，但隐藏联系方式
     await matchRequest.populate({
       path: 'matchedSubstitutes.userId',
@@ -201,6 +213,26 @@ router.put('/:id/select', authMiddleware, async (req, res) => {
 
     await matchRequest.save();
 
+    // 创建通知给被选中的代课者
+    await Notification.create({
+      userId: substituteId,
+      type: 'substitute_selected',
+      title: '你被选为代课者',
+      content: '有人选择了你作为代课者，对方可能会联系你！',
+      relatedId: matchRequest._id,
+      fromUserId: req.userId
+    });
+
+    // 记录活动日志
+    await ActivityLog.create({
+      userId: req.userId,
+      actionType: 'select_substitute',
+      description: '选择代课者',
+      relatedId: matchRequest._id,
+      relatedModel: 'MatchRequest',
+      metadata: { substituteId }
+    });
+
     // 填充选中的代课者完整信息（包含联系方式）
     await matchRequest.populate({
       path: 'selectedSubstitute',
@@ -238,6 +270,99 @@ router.get('/:id/contact', authMiddleware, async (req, res) => {
 
     res.json({
       substitute: matchRequest.selectedSubstitute
+    });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
+// 代课者查看匹配到自己的请求
+router.get('/matched-to-me', authMiddleware, async (req, res) => {
+  try {
+    const requests = await MatchRequest.find({
+      'matchedSubstitutes.userId': req.userId,
+      status: { $in: ['pending', 'matched'] }
+    })
+      .populate('requesterId', 'username profile.gender profile.major profile.grade')
+      .sort({ createdAt: -1 });
+
+    // 标记哪些请求选择了当前用户
+    const formattedRequests = requests.map(request => {
+      const isSelected = request.selectedSubstitute &&
+                        request.selectedSubstitute.toString() === req.userId.toString();
+
+      return {
+        ...request.toObject(),
+        isSelectedByMe: isSelected,
+        requesterInfo: isSelected ? request.requesterId : {
+          username: request.requesterId.username,
+          profile: {
+            gender: request.requesterId.profile.gender,
+            major: request.requesterId.profile.major,
+            grade: request.requesterId.profile.grade
+          }
+        }
+      };
+    });
+
+    res.json(formattedRequests);
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
+// 代课者查看匹配请求详情（标记为已查看）
+router.post('/:id/view', authMiddleware, async (req, res) => {
+  try {
+    const matchRequest = await MatchRequest.findById(req.params.id)
+      .populate('requesterId', 'username profile');
+
+    if (!matchRequest) {
+      return res.status(404).json({ message: '未找到该匹配请求' });
+    }
+
+    // 检查当前用户是否在匹配列表中
+    const isMatched = matchRequest.matchedSubstitutes.some(
+      sub => sub.userId.toString() === req.userId.toString()
+    );
+
+    if (!isMatched) {
+      return res.status(403).json({ message: '您不在该匹配请求的候选列表中' });
+    }
+
+    // 检查是否已经查看过
+    const alreadyViewed = matchRequest.viewedBySubstitutes.some(
+      view => view.userId.toString() === req.userId.toString()
+    );
+
+    if (!alreadyViewed) {
+      // 添加查看记录
+      matchRequest.viewedBySubstitutes.push({
+        userId: req.userId,
+        viewedAt: new Date()
+      });
+
+      await matchRequest.save();
+
+      // 创建通知给需求者
+      await Notification.create({
+        userId: matchRequest.requesterId,
+        type: 'match_viewed',
+        title: '有代课者查看了你的请求',
+        content: '有人对你的代课需求感兴趣，可能会联系你！',
+        relatedId: matchRequest._id,
+        fromUserId: req.userId
+      });
+    }
+
+    // 如果被选中，返回完整联系方式
+    const isSelected = matchRequest.selectedSubstitute &&
+                      matchRequest.selectedSubstitute.toString() === req.userId.toString();
+
+    res.json({
+      matchRequest,
+      isSelected,
+      requesterContact: isSelected ? matchRequest.requesterId.profile : null
     });
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });

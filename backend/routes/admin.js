@@ -5,6 +5,8 @@ const User = require('../models/User');
 const Availability = require('../models/Availability');
 const MatchRequest = require('../models/MatchRequest');
 const MealAppointment = require('../models/MealAppointment');
+const ActivityLog = require('../models/ActivityLog');
+const Notification = require('../models/Notification');
 
 // 获取所有用户列表
 router.get('/users', adminAuthMiddleware, async (req, res) => {
@@ -62,6 +64,63 @@ router.get('/users/:id', adminAuthMiddleware, async (req, res) => {
   }
 });
 
+// 获取用户的活动历史记录（管理员）
+router.get('/users/:id/activity-log', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, actionType } = req.query;
+
+    const query = { userId: req.params.id };
+    if (actionType) {
+      query.actionType = actionType;
+    }
+
+    const logs = await ActivityLog.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await ActivityLog.countDocuments(query);
+
+    res.json({
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
+// 获取用户的发布内容历史（管理员）
+router.get('/users/:id/content-history', adminAuthMiddleware, async (req, res) => {
+  try {
+    const availabilities = await Availability.find({ userId: req.params.id })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    const matchRequests = await MatchRequest.find({ requesterId: req.params.id })
+      .populate('matchedSubstitutes.userId', 'username')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    const mealAppointments = await MealAppointment.find({ userId: req.params.id })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      availabilities,
+      matchRequests,
+      mealAppointments
+    });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
 // 删除用户账号
 router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
   try {
@@ -79,6 +138,8 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
     await Availability.deleteMany({ userId: req.params.id });
     await MatchRequest.deleteMany({ requesterId: req.params.id });
     await MealAppointment.deleteMany({ userId: req.params.id });
+    await ActivityLog.deleteMany({ userId: req.params.id });
+    await Notification.deleteMany({ userId: req.params.id });
     await User.findByIdAndDelete(req.params.id);
 
     res.json({ message: '用户已删除' });
