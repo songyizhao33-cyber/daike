@@ -3,11 +3,21 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const Tarot = require('../models/Tarot');
 const ActivityLog = require('../models/ActivityLog');
+let tarotCache = null;
+
+async function getAllTarots() {
+  if (Array.isArray(tarotCache) && tarotCache.length > 0) {
+    return tarotCache;
+  }
+  const tarots = await Tarot.find().sort({ order: 1 });
+  tarotCache = tarots;
+  return tarots;
+}
 
 // 获取所有塔罗牌（用于初始化数据）
 router.get('/all', authMiddleware, async (req, res) => {
   try {
-    const tarots = await Tarot.find().sort({ order: 1 });
+    const tarots = await getAllTarots();
     res.json(tarots);
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });
@@ -18,7 +28,7 @@ router.get('/all', authMiddleware, async (req, res) => {
 router.post('/draw', authMiddleware, async (req, res) => {
   try {
     // 获取所有塔罗牌
-    const tarots = await Tarot.find();
+    const tarots = await getAllTarots();
 
     if (tarots.length === 0) {
       return res.status(404).json({ message: '塔罗牌数据未初始化' });
@@ -100,6 +110,7 @@ router.post('/initialize', authMiddleware, async (req, res) => {
     ];
 
     await Tarot.insertMany(tarotData);
+    tarotCache = tarotData;
 
     res.json({ message: '塔罗牌数据初始化成功', count: tarotData.length });
   } catch (error) {
@@ -108,4 +119,3 @@ router.post('/initialize', authMiddleware, async (req, res) => {
 });
 
 module.exports = router;
-

@@ -39,26 +39,26 @@
 
         <!-- 其他功能 -->
         <div class="section-title">更多功能</div>
-        <el-row :gutter="15" class="other-features">
-          <el-col :xs="12" :sm="8" :md="6">
+        <el-row :gutter="15" class="other-features" :justify="isAdmin ? 'start' : 'center'">
+          <el-col :xs="12" :sm="8" :md="5">
             <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/tarot')">
               <el-icon :size="40"><MagicStick /></el-icon>
               <h4>塔罗占卜</h4>
             </el-card>
           </el-col>
-          <el-col :xs="12" :sm="8" :md="6">
+          <el-col :xs="12" :sm="8" :md="5">
             <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/feedback')">
               <el-icon :size="40"><ChatDotRound /></el-icon>
               <h4>反馈信箱</h4>
             </el-card>
           </el-col>
-          <el-col :xs="12" :sm="8" :md="6">
+          <el-col :xs="12" :sm="8" :md="5">
             <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/profile')">
               <el-icon :size="40"><User /></el-icon>
               <h4>个人中心</h4>
             </el-card>
           </el-col>
-          <el-col v-if="userStore.user?.role === 'admin'" :xs="12" :sm="8" :md="6">
+          <el-col v-if="isAdmin" :xs="12" :sm="8" :md="5">
             <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/admin')">
               <el-icon :size="40"><Setting /></el-icon>
               <h4>管理后台</h4>
@@ -71,11 +71,13 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
+const isAdmin = computed(() => userStore.user?.role === 'admin')
 
 const handleLogout = () => {
   userStore.logout()
@@ -147,9 +149,9 @@ const handleLogout = () => {
 }
 
 .feature-card.primary {
-  padding: 40px 20px;
+  padding: 44px 24px;
   background: white;
-  min-height: 220px;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -173,8 +175,12 @@ const handleLogout = () => {
 }
 
 .feature-card.secondary {
-  padding: 25px 15px;
+  padding: 20px 12px;
   background: rgba(255, 255, 255, 0.95);
+  min-height: 145px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .feature-card.secondary:hover {
@@ -206,4 +212,3 @@ const handleLogout = () => {
   }
 }
 </style>
-

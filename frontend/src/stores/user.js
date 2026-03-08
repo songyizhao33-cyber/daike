@@ -8,11 +8,11 @@ export const useUserStore = defineStore('user', () => {
   const user = ref(null)
   const token = ref(localStorage.getItem('token') || '')
 
-  const login = async (username, password) => {
+  const login = async (identifier, password) => {
     try {
       // 对密码进行哈希后再发送
       const hashedPassword = hashPassword(password)
-      const data = await api.post('/auth/login', { username, password: hashedPassword })
+      const data = await api.post('/auth/login', { identifier, password: hashedPassword })
       token.value = data.token
       user.value = data.user
       localStorage.setItem('token', data.token)

@@ -72,12 +72,34 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import request from '../utils/request';
 
 const loading = ref(false);
 const drawnCard = ref(null);
+
+const preloadImage = (src) => new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => resolve(true);
+  img.onerror = () => resolve(false);
+  img.src = src;
+});
+
+onMounted(async () => {
+  try {
+    const cards = await request.get('/tarot/all');
+    if (Array.isArray(cards)) {
+      cards.forEach((card) => {
+        if (card?.imageFile) {
+          preloadImage(`/tarot-images/${card.imageFile}`);
+        }
+      });
+    }
+  } catch (error) {
+    // Ignore preload failures and keep draw flow available.
+  }
+});
 
 const drawCard = async () => {
   loading.value = true;
@@ -95,6 +117,9 @@ const drawCard = async () => {
       }
     }
     // request 已经返回 response.data，所以直接使用 data.tarot
+    if (data?.tarot?.imageFile) {
+      preloadImage(`/tarot-images/${data.tarot.imageFile}`);
+    }
     drawnCard.value = data.tarot;
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '抽取失败');

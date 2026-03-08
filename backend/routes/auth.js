@@ -85,9 +85,19 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, identifier, password } = req.body;
+    const loginId = (identifier || username || '').trim();
+    if (!loginId || !password) {
+      return res.status(400).json({ message: '登录标识和密码不能为空' });
+    }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({
+      $or: [
+        { username: loginId },
+        { 'profile.email': loginId },
+        { 'profile.wechat': loginId }
+      ]
+    });
     if (!user) {
       return res.status(401).json({ message: '用户名或密码错误' });
     }
