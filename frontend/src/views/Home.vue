@@ -32,7 +32,7 @@
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/meal')">
               <el-icon :size="60" color="#e6a23c"><Orange /></el-icon>
               <h3>约饭</h3>
-              <p>寻找饭搭子</p>
+              <p>寻找饭搭子，一起吃饭</p>
             </el-card>
           </el-col>
         </el-row>
@@ -149,6 +149,10 @@ const handleLogout = () => {
 .feature-card.primary {
   padding: 40px 20px;
   background: white;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .feature-card.primary:hover {

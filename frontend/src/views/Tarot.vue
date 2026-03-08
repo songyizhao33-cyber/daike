@@ -4,6 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>塔罗牌占卜</span>
+          <el-button @click="$router.push('/home')" size="small">返回首页</el-button>
         </div>
       </template>
 
@@ -81,8 +82,9 @@ const drawnCard = ref(null);
 const drawCard = async () => {
   loading.value = true;
   try {
-    const response = await request.post('/api/tarot/draw');
-    drawnCard.value = response.data.tarot;
+    const data = await request.post('/tarot/draw');
+    // request 已经返回 response.data，所以直接使用 data.tarot
+    drawnCard.value = data.tarot;
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '抽取失败');
   } finally {
@@ -107,9 +109,11 @@ const resetDraw = () => {
 }
 
 .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 20px;
   font-weight: bold;
-  text-align: center;
 }
 
 .draw-section {
