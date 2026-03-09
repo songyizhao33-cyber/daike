@@ -22,6 +22,39 @@ function buildUserSnapshot(user) {
   };
 }
 
+async function sanitizeAppointments(appointments) {
+  const validAppointments = [];
+  const cleanupTasks = [];
+
+  for (const appointment of appointments) {
+    if (!appointment.userId) {
+      cleanupTasks.push(MealAppointment.findByIdAndDelete(appointment._id));
+      cleanupTasks.push(
+        InteractionRecord.deleteMany({
+          relatedModel: 'MealAppointment',
+          relatedId: appointment._id
+        })
+      );
+      cleanupTasks.push(Notification.deleteMany({ relatedId: appointment._id }));
+      continue;
+    }
+
+    const validInterestedUsers = (appointment.interestedUsers || []).filter(item => item.userId);
+    if (validInterestedUsers.length !== (appointment.interestedUsers || []).length) {
+      appointment.interestedUsers = validInterestedUsers;
+      cleanupTasks.push(appointment.save());
+    }
+
+    validAppointments.push(appointment);
+  }
+
+  if (cleanupTasks.length > 0) {
+    await Promise.all(cleanupTasks);
+  }
+
+  return validAppointments;
+}
+
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { date, mealTime, mealType, location, campus, note } = req.body;
@@ -69,9 +102,11 @@ router.get('/browse', authMiddleware, async (req, res) => {
     if (campus) query.campus = campus;
     if (mealType) query.mealType = mealType;
 
-    const appointments = await MealAppointment.find(query)
+    let appointments = await MealAppointment.find(query)
       .populate('userId', 'username profile')
       .populate('interestedUsers.userId', 'username profile');
+
+    appointments = await sanitizeAppointments(appointments);
 
     const now = new Date();
     appointments.sort((a, b) => {
@@ -93,9 +128,11 @@ router.get('/browse', authMiddleware, async (req, res) => {
 
 router.get('/my', authMiddleware, async (req, res) => {
   try {
-    const appointments = await MealAppointment.find({ userId: req.userId })
+    let appointments = await MealAppointment.find({ userId: req.userId })
       .populate('interestedUsers.userId', 'username profile')
       .sort({ date: -1, mealTime: 1 });
+
+    appointments = await sanitizeAppointments(appointments);
 
     res.json(appointments);
   } catch (error) {
@@ -188,6 +225,15 @@ router.post('/:id/interest', authMiddleware, async (req, res) => {
       User.findById(appointment.userId),
       User.findById(req.userId)
     ]);
+
+    if (!publisher) {
+      await Promise.all([
+        MealAppointment.findByIdAndDelete(appointment._id),
+        InteractionRecord.deleteMany({ relatedModel: 'MealAppointment', relatedId: appointment._id }),
+        Notification.deleteMany({ relatedId: appointment._id })
+      ]);
+      return res.status(404).json({ message: '该约饭发布者已不存在，记录已清理' });
+    }
 
     appointment.interestedUsers.push({
       userId: req.userId,

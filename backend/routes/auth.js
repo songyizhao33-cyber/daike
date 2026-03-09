@@ -219,6 +219,10 @@ router.delete('/account', async (req, res) => {
     await Availability.deleteMany({ userId });
     await MatchRequest.deleteMany({ requesterId: userId });
     await MealAppointment.deleteMany({ userId });
+    await MealAppointment.updateMany(
+      { 'interestedUsers.userId': userId },
+      { $pull: { interestedUsers: { userId } } }
+    );
     await Notification.deleteMany({ $or: [{ userId }, { fromUserId: userId }] });
     await InteractionRecord.deleteMany({ $or: [{ sourceUserId: userId }, { targetUserId: userId }] });
     await ActivityLog.deleteMany({ userId });

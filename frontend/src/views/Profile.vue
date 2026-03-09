@@ -67,48 +67,6 @@
           </el-form>
         </el-card>
 
-        <el-card class="history-card" style="margin-top: 20px">
-          <template #header>
-            <div class="card-header">
-              <span>我的综合记录表</span>
-              <el-button type="primary" size="small" @click="loadHistory">刷新</el-button>
-            </div>
-          </template>
-
-          <el-table :data="historyRows" style="width: 100%">
-            <el-table-column prop="recordType" label="记录类型" width="140" />
-            <el-table-column prop="myRole" label="我的身份" width="120" />
-            <el-table-column prop="summary" label="关键信息" min-width="220" />
-            <el-table-column label="对方信息" min-width="180">
-              <template #default="{ row }">
-                <span v-if="row.counterpart">
-                  {{ row.counterpart.username }}
-                  <span class="subtext">{{ row.counterpart.profile?.major || '-' }} / {{ row.counterpart.profile?.grade || '-' }}</span>
-                </span>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="联系方式" min-width="200">
-              <template #default="{ row }">
-                <span v-if="row.counterpart">
-                  微信 {{ row.counterpart.profile?.wechat || '-' }} / 邮箱 {{ row.counterpart.profile?.email || '-' }}
-                </span>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="状态" width="100">
-              <template #default="{ row }">
-                <el-tag :type="row.statusType">{{ row.statusText }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="时间" width="180">
-              <template #default="{ row }">
-                {{ formatDateTime(row.createdAt) }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-
         <el-card class="danger-zone" style="margin-top: 20px; max-width: 760px; margin-left: auto; margin-right: auto;">
           <template #header>
             <span style="color: #f56c6c;">危险操作</span>
@@ -122,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -132,12 +90,6 @@ const router = useRouter()
 const userStore = useUserStore()
 const isEditing = ref(false)
 const saving = ref(false)
-const historyData = ref({
-  availabilities: [],
-  matchRequests: [],
-  mealAppointments: [],
-  interactions: []
-})
 
 const editForm = ref({
   username: '',
@@ -161,66 +113,6 @@ const getGenderText = (gender) => {
   const map = { male: '男', female: '女', other: '其他' }
   return map[gender] || '未填写'
 }
-
-const formatDateTime = (date) => new Date(date).toLocaleString('zh-CN')
-const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
-
-const historyRows = computed(() => {
-  const userId = userStore.user?.id
-  const availabilityRows = (historyData.value.availabilities || []).map(item => ({
-    id: `availability-${item._id}`,
-    recordType: '空闲发布',
-    myRole: '发布者',
-    summary: `周${item.dayOfWeek} 第 ${item.periods.join(', ')} 节，${item.campuses.join(' / ')}`,
-    counterpart: null,
-    statusText: item.status === 'available' ? '可用' : item.status === 'booked' ? '已被占用' : '已取消',
-    statusType: item.status === 'available' ? 'success' : item.status === 'booked' ? 'warning' : 'info',
-    createdAt: item.createdAt
-  }))
-
-  const matchRows = (historyData.value.matchRequests || []).map(item => ({
-    id: `match-${item._id}`,
-    recordType: '代课需求',
-    myRole: '发布者',
-    summary: `${item.courseInfo?.courseName || '未填写课程'}，周${item.dayOfWeek} 第 ${item.periods.join(', ')} 节，${item.campus}`,
-    counterpart: item.selectedSubstitute || null,
-    statusText: item.status === 'matched' ? '已选空闲者' : item.status === 'pending' ? '待处理' : item.status,
-    statusType: item.status === 'matched' ? 'success' : item.status === 'pending' ? 'warning' : 'info',
-    createdAt: item.createdAt
-  }))
-
-  const mealRows = (historyData.value.mealAppointments || []).map(item => ({
-    id: `meal-${item._id}`,
-    recordType: '约饭发布',
-    myRole: '发布者',
-    summary: `${formatDate(item.date)} ${item.mealTime} ${item.location}，已有 ${item.interestedUsers?.length || 0} 人点击`,
-    counterpart: null,
-    statusText: item.status === 'active' ? '进行中' : '已取消',
-    statusType: item.status === 'active' ? 'success' : 'info',
-    createdAt: item.createdAt
-  }))
-
-  const interactionRows = (historyData.value.interactions || []).map(item => {
-    const isSource = item.sourceUserId === userId || item.sourceUserId?._id === userId
-    const counterpart = isSource ? item.targetSnapshot : item.sourceSnapshot
-    const isMatch = item.category === 'match'
-    return {
-      id: `interaction-${item._id}`,
-      recordType: isMatch ? '代课互动' : '约饭互动',
-      myRole: isSource ? (isMatch ? '需求方' : '点击者') : (isMatch ? '被选空闲者' : '发布者'),
-      summary: isMatch
-        ? `${item.context?.courseInfo?.courseName || '未填写课程'}，周${item.context?.dayOfWeek || '-'} 第 ${(item.context?.periods || []).join(', ')} 节`
-        : `${formatDate(item.context?.date)} ${item.context?.mealTime || '-'} ${item.context?.location || '-'}`,
-      counterpart,
-      statusText: item.status === 'active' ? '已开放联系方式' : '已取消',
-      statusType: item.status === 'active' ? 'success' : 'info',
-      createdAt: item.createdAt
-    }
-  })
-
-  return [...interactionRows, ...matchRows, ...mealRows, ...availabilityRows]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-})
 
 const startEdit = () => {
   editForm.value = {
@@ -264,14 +156,6 @@ const saveProfile = async () => {
   }
 }
 
-const loadHistory = async () => {
-  try {
-    historyData.value = await api.get('/history/overview')
-  } catch (error) {
-    console.error(error)
-  }
-}
-
 const handleDeleteAccount = async () => {
   try {
     await ElMessageBox.confirm(
@@ -295,10 +179,6 @@ const handleDeleteAccount = async () => {
     }
   }
 }
-
-onMounted(() => {
-  loadHistory()
-})
 </script>
 
 <style scoped>
@@ -326,9 +206,8 @@ onMounted(() => {
   font-size: 24px;
 }
 
-.profile-card,
-.history-card {
-  max-width: 1100px;
+.profile-card {
+  max-width: 760px;
   margin: 0 auto;
 }
 
@@ -341,13 +220,6 @@ onMounted(() => {
 .header-actions {
   display: flex;
   gap: 8px;
-}
-
-.subtext {
-  display: block;
-  color: #909399;
-  font-size: 12px;
-  margin-top: 4px;
 }
 
 .form-tip {

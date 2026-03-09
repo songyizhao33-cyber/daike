@@ -11,39 +11,43 @@
         </div>
       </el-header>
       <el-main>
-        <!-- 主要功能 -->
         <div class="section-title">主要功能</div>
         <el-row :gutter="20" class="main-features" justify="center">
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/availability')">
               <el-icon :size="50" color="#409eff"><Calendar /></el-icon>
               <h3>空闲时间</h3>
-              <p>标记你的空闲时间段</p>
+              <p>标记你的空闲课表和可代课时间</p>
             </el-card>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/match')">
               <el-icon :size="50" color="#67c23a"><Search /></el-icon>
               <h3>寻找代课</h3>
-              <p>发布需求，匹配代课者</p>
+              <p>发布需求并联系匹配到的空闲者</p>
             </el-card>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/meal')">
               <el-icon :size="50" color="#e6a23c"><Orange /></el-icon>
               <h3>约饭</h3>
-              <p>寻找饭搭子，一起吃饭</p>
+              <p>支持多人点击约一下并同步双方信息</p>
             </el-card>
           </el-col>
         </el-row>
 
-        <!-- 其他功能 -->
         <div class="section-title">更多功能</div>
         <el-row :gutter="15" class="other-features" :justify="isAdmin ? 'start' : 'center'">
           <el-col :xs="12" :sm="8" :md="5">
-            <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/tarot')">
-              <el-icon :size="40"><MagicStick /></el-icon>
-              <h4>塔罗占卜</h4>
+            <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/history')">
+              <el-icon :size="40"><Document /></el-icon>
+              <h4>信息记录</h4>
+            </el-card>
+          </el-col>
+          <el-col :xs="12" :sm="8" :md="5">
+            <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/profile')">
+              <el-icon :size="40"><User /></el-icon>
+              <h4>个人中心</h4>
             </el-card>
           </el-col>
           <el-col :xs="12" :sm="8" :md="5">
@@ -53,9 +57,9 @@
             </el-card>
           </el-col>
           <el-col :xs="12" :sm="8" :md="5">
-            <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/profile')">
-              <el-icon :size="40"><User /></el-icon>
-              <h4>个人中心</h4>
+            <el-card shadow="hover" class="feature-card secondary" @click="$router.push('/tarot')">
+              <el-icon :size="40"><MagicStick /></el-icon>
+              <h4>塔罗占卜</h4>
             </el-card>
           </el-col>
           <el-col v-if="isAdmin" :xs="12" :sm="8" :md="5">
@@ -207,10 +211,6 @@ const handleLogout = () => {
 
   .feature-card.primary {
     padding: 30px 15px;
-  }
-
-  .feature-card.primary h3 {
-    font-size: 18px;
   }
 }
 </style>

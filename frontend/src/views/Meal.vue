@@ -31,7 +31,12 @@
             </el-form-item>
             <el-form-item label="时间" required>
               <el-select v-model="form.mealTime" placeholder="选择时间" style="width: 100%">
-                <el-option v-for="time in getAvailableTimes()" :key="time" :label="time" :value="time" />
+                <el-option
+                  v-for="time in getAvailableTimes()"
+                  :key="time"
+                  :label="time"
+                  :value="time"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="校区" required>
@@ -43,10 +48,10 @@
               </el-select>
             </el-form-item>
             <el-form-item label="地点" required>
-              <el-input v-model="form.location" placeholder="例如：北区食堂、校门口" />
+              <el-input v-model="form.location" placeholder="例如：北食堂或者校门附近" />
             </el-form-item>
             <el-form-item label="备注">
-              <el-input v-model="form.note" type="textarea" :rows="3" placeholder="可补充口味、预算、同行人数等" />
+              <el-input v-model="form.note" type="textarea" :rows="3" placeholder="可填写额外说明" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handlePublish">发布约饭</el-button>
@@ -101,21 +106,22 @@
             <el-table-column prop="campus" label="校区" width="90" />
             <el-table-column prop="location" label="地点" min-width="160" />
             <el-table-column prop="note" label="备注" min-width="160" />
-            <el-table-column label="发布者" width="160">
+            <el-table-column label="发布者" width="170">
               <template #default="{ row }">
                 <div>{{ row.userId.username }}</div>
                 <div class="subtext">{{ row.userId.profile?.major || '-' }} / {{ row.userId.profile?.grade || '-' }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="已约人数" width="100">
+            <el-table-column label="联系方式" min-width="180">
               <template #default="{ row }">
-                <el-tag type="success">{{ row.interestedUsers?.length || 0 }} 人</el-tag>
+                <div>微信: {{ row.userId.profile?.wechat || '-' }}</div>
+                <div>邮箱: {{ row.userId.profile?.email || '-' }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="140">
+            <el-table-column label="操作" width="130">
               <template #default="{ row }">
                 <el-button
-                  v-if="!isMyAppointment(row) && !hasExpressedInterest(row)"
+                  v-if="canExpressInterest(row)"
                   type="primary"
                   size="small"
                   @click="handleExpressInterest(row._id)"
@@ -123,7 +129,7 @@
                   约一下
                 </el-button>
                 <el-button
-                  v-else-if="!isMyAppointment(row) && hasExpressedInterest(row)"
+                  v-else-if="hasExpressedInterest(row)"
                   type="info"
                   size="small"
                   @click="handleCancelInterest(row._id)"
@@ -165,7 +171,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="点击约一下的人" width="140">
+            <el-table-column label="感兴趣的人" width="140">
               <template #default="{ row }">
                 <el-button
                   v-if="row.interestedUsers && row.interestedUsers.length > 0"
@@ -173,7 +179,7 @@
                   size="small"
                   @click="showInterestedUsers(row)"
                 >
-                  {{ row.interestedUsers.length }} 人
+                  查看名单
                 </el-button>
                 <span v-else>-</span>
               </template>
@@ -196,7 +202,7 @@
       </el-main>
     </el-container>
 
-    <el-dialog v-model="interestedDialogVisible" title="点击了你约饭的人" width="720px">
+    <el-dialog v-model="interestedDialogVisible" title="点击过你约饭的人" width="720px">
       <el-table :data="currentInterestedUsers" style="width: 100%">
         <el-table-column prop="userId.username" label="用户名" width="120" />
         <el-table-column label="性别" width="80">
@@ -270,8 +276,9 @@ const contactContextText = computed(() => {
 })
 
 const disabledDate = (time) => time.getTime() < Date.now() - 24 * 60 * 60 * 1000
-
 const getAvailableTimes = () => mealTimes[form.value.mealType] || []
+const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
+const isExpired = (date) => new Date(date) < new Date()
 
 const getGenderText = (gender) => {
   const map = { male: '男', female: '女', other: '其他' }
@@ -283,9 +290,6 @@ const getMealTypeText = (type) => {
   return map[type] || type
 }
 
-const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
-const isExpired = (date) => new Date(date) < new Date()
-
 const resetForm = () => {
   form.value = {
     date: null,
@@ -296,6 +300,11 @@ const resetForm = () => {
     note: ''
   }
 }
+
+const normalizeAppointment = (item) => ({
+  ...item,
+  interestedUsers: (item.interestedUsers || []).filter(user => user?.userId)
+})
 
 const handlePublish = async () => {
   if (!form.value.date || !form.value.mealTime || !form.value.campus || !form.value.location) {
@@ -319,7 +328,8 @@ const loadAppointments = async () => {
     const params = {}
     if (filterDate.value) params.date = filterDate.value.toISOString().split('T')[0]
     if (filterCampus.value) params.campus = filterCampus.value
-    appointments.value = await api.get('/meal/browse', { params })
+    const data = await api.get('/meal/browse', { params })
+    appointments.value = data.map(normalizeAppointment)
   } catch (error) {
     console.error(error)
   }
@@ -328,10 +338,45 @@ const loadAppointments = async () => {
 const loadMyAppointments = async () => {
   try {
     const data = await api.get('/meal/my')
-    myAppointments.value = data.map(item => ({
-      ...item,
-      interestedUsers: item.interestedUsers || []
-    }))
+    myAppointments.value = data.map(normalizeAppointment)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const isMyAppointment = (appointment) => appointment.userId?._id === userStore.user?.id
+
+const hasExpressedInterest = (appointment) => {
+  return (appointment.interestedUsers || []).some(
+    item => item.userId?._id === userStore.user?.id
+  )
+}
+
+const canExpressInterest = (appointment) => {
+  if (isMyAppointment(appointment)) return false
+  return !hasExpressedInterest(appointment)
+}
+
+const handleExpressInterest = async (id) => {
+  try {
+    const data = await api.post(`/meal/${id}/interest`)
+    contactDialogData.value = data.publisher
+    contactContext.value = data.context
+    contactDialogVisible.value = true
+    ElMessage.success('已成功约一下，双方信息已开放')
+    loadAppointments()
+    loadMyAppointments()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const handleCancelInterest = async (id) => {
+  try {
+    await api.delete(`/meal/${id}/interest`)
+    ElMessage.success('已取消')
+    loadAppointments()
+    loadMyAppointments()
   } catch (error) {
     console.error(error)
   }
@@ -363,38 +408,6 @@ const handleDelete = async (id) => {
     if (error !== 'cancel') {
       console.error(error)
     }
-  }
-}
-
-const isMyAppointment = (appointment) => appointment.userId._id === userStore.user?.id
-
-const hasExpressedInterest = (appointment) => {
-  if (!appointment.interestedUsers) return false
-  return appointment.interestedUsers.some(item => item.userId._id === userStore.user?.id)
-}
-
-const handleExpressInterest = async (id) => {
-  try {
-    const data = await api.post(`/meal/${id}/interest`)
-    contactDialogData.value = data.publisher
-    contactContext.value = data.context
-    contactDialogVisible.value = true
-    ElMessage.success('双方信息已开放，请尽快联系')
-    loadAppointments()
-    loadMyAppointments()
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const handleCancelInterest = async (id) => {
-  try {
-    await api.delete(`/meal/${id}/interest`)
-    ElMessage.success('已取消')
-    loadAppointments()
-    loadMyAppointments()
-  } catch (error) {
-    console.error(error)
   }
 }
 
