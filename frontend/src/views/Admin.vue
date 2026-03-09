@@ -29,6 +29,14 @@
           <el-col :xs="24" :sm="12" :md="6">
             <el-card>
               <div class="stat-card">
+                <div class="stat-value">{{ stats.totalMatchRequests }}</div>
+                <div class="stat-label">代课请求</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="6">
+            <el-card>
+              <div class="stat-card">
                 <div class="stat-value">{{ stats.totalMealAppointments }}</div>
                 <div class="stat-label">约饭信息</div>
               </div>
@@ -36,8 +44,16 @@
           </el-col>
         </el-row>
 
+        <!-- 标签页 -->
+        <el-tabs v-model="mainTab" @tab-change="handleMainTabChange">
+          <el-tab-pane label="用户管理" name="users"></tab-pane>
+          <el-tab-pane label="空闲时间总表" name="availabilities"></tab-pane>
+          <el-tab-pane label="代课请求总表" name="matchRequests"></tab-pane>
+          <el-tab-pane label="约饭信息总表" name="mealAppointments"></tab-pane>
+        </el-tabs>
+
         <!-- 用户列表 -->
-        <el-card>
+        <el-card v-show="mainTab === 'users'">
           <template #header>
             <div class="card-header">
               <span>用户管理</span>
@@ -99,6 +115,162 @@
             style="margin-top: 20px; justify-content: center;"
           />
         </el-card>
+
+        <!-- 空闲时间总表 -->
+        <el-card v-show="mainTab === 'availabilities'">
+          <template #header>
+            <div class="card-header">
+              <span>空闲时间总表</span>
+              <div style="display: flex; gap: 10px;">
+                <el-select v-model="availabilityFilters.dayOfWeek" placeholder="星期" clearable @change="loadAvailabilities" style="width: 120px;">
+                  <el-option label="周一" :value="1" />
+                  <el-option label="周二" :value="2" />
+                  <el-option label="周三" :value="3" />
+                  <el-option label="周四" :value="4" />
+                  <el-option label="周五" :value="5" />
+                  <el-option label="周六" :value="6" />
+                </el-select>
+                <el-select v-model="availabilityFilters.campus" placeholder="校区" clearable @change="loadAvailabilities" style="width: 120px;">
+                  <el-option label="邯郸" value="邯郸" />
+                  <el-option label="枫林" value="枫林" />
+                  <el-option label="江湾" value="江湾" />
+                  <el-option label="张江" value="张江" />
+                </el-select>
+              </div>
+            </div>
+          </template>
+          <el-table :data="availabilities" v-loading="loadingAvailabilities" stripe>
+            <el-table-column label="用户" width="120">
+              <template #default="{ row }">{{ row.userId?.username }}</template>
+            </el-table-column>
+            <el-table-column label="星期" width="80">
+              <template #default="{ row }">周{{ ['一','二','三','四','五','六'][row.dayOfWeek - 1] }}</template>
+            </el-table-column>
+            <el-table-column label="节次" width="200">
+              <template #default="{ row }">{{ row.periods.join(', ') }}</template>
+            </el-table-column>
+            <el-table-column label="校区" width="150">
+              <template #default="{ row }">{{ row.campuses.join(', ') }}</template>
+            </el-table-column>
+            <el-table-column label="频率" width="100">
+              <template #default="{ row }">{{ getFrequencyText(row.frequencyType) }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">{{ getStatusText(row.status) }}</template>
+            </el-table-column>
+            <el-table-column label="创建时间" width="180">
+              <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+            </el-table-column>
+          </el-table>
+          <el-pagination
+            v-model:current-page="availabilityPage"
+            :page-size="15"
+            :total="availabilityTotal"
+            layout="total, prev, pager, next"
+            @current-change="loadAvailabilities"
+            style="margin-top: 20px; justify-content: center;"
+          />
+        </el-card>
+
+        <!-- 代课请求总表 -->
+        <el-card v-show="mainTab === 'matchRequests'">
+          <template #header>
+            <div class="card-header">
+              <span>代课请求总表</span>
+              <el-select v-model="matchRequestFilters.status" placeholder="状态" clearable @change="loadMatchRequests" style="width: 150px;">
+                <el-option label="待匹配" value="pending" />
+                <el-option label="已匹配" value="matched" />
+                <el-option label="已完成" value="completed" />
+                <el-option label="已取消" value="cancelled" />
+              </el-select>
+            </div>
+          </template>
+          <el-table :data="matchRequests" v-loading="loadingMatchRequests" stripe>
+            <el-table-column label="需求者" width="120">
+              <template #default="{ row }">{{ row.requesterId?.username }}</template>
+            </el-table-column>
+            <el-table-column label="课程信息" width="200">
+              <template #default="{ row }">{{ row.courseInfo }}</template>
+            </el-table-column>
+            <el-table-column label="星期" width="80">
+              <template #default="{ row }">周{{ ['一','二','三','四','五','六'][row.dayOfWeek - 1] }}</template>
+            </el-table-column>
+            <el-table-column label="节次" width="150">
+              <template #default="{ row }">{{ row.periods.join(', ') }}</template>
+            </el-table-column>
+            <el-table-column label="校区" width="100">
+              <template #default="{ row }">{{ row.campus }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">{{ getMatchStatusText(row.status) }}</template>
+            </el-table-column>
+            <el-table-column label="匹配数" width="100">
+              <template #default="{ row }">{{ row.matchedSubstitutes?.length || 0 }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button type="danger" size="small" @click="handleDeleteMatchRequest(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-pagination
+            v-model:current-page="matchRequestPage"
+            :page-size="15"
+            :total="matchRequestTotal"
+            layout="total, prev, pager, next"
+            @current-change="loadMatchRequests"
+            style="margin-top: 20px; justify-content: center;"
+          />
+        </el-card>
+
+        <!-- 约饭信息总表 -->
+        <el-card v-show="mainTab === 'mealAppointments'">
+          <template #header>
+            <div class="card-header">
+              <span>约饭信息总表</span>
+              <el-select v-model="mealFilters.status" placeholder="状态" clearable @change="loadMealAppointments" style="width: 150px;">
+                <el-option label="活跃" value="active" />
+                <el-option label="已取消" value="cancelled" />
+              </el-select>
+            </div>
+          </template>
+          <el-table :data="mealAppointments" v-loading="loadingMealAppointments" stripe>
+            <el-table-column label="发布者" width="120">
+              <template #default="{ row }">{{ row.userId?.username }}</template>
+            </el-table-column>
+            <el-table-column label="日期" width="120">
+              <template #default="{ row }">{{ formatDate(row.date) }}</template>
+            </el-table-column>
+            <el-table-column label="时间" width="150">
+              <template #default="{ row }">{{ row.mealTime }}</template>
+            </el-table-column>
+            <el-table-column label="类型" width="100">
+              <template #default="{ row }">{{ getMealTypeText(row.mealType) }}</template>
+            </el-table-column>
+            <el-table-column label="校区" width="100">
+              <template #default="{ row }">{{ row.campus }}</template>
+            </el-table-column>
+            <el-table-column label="地点" width="150">
+              <template #default="{ row }">{{ row.location }}</template>
+            </el-table-column>
+            <el-table-column label="感兴趣人数" width="120">
+              <template #default="{ row }">{{ row.interestedUsers?.length || 0 }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button type="danger" size="small" @click="handleDeleteMealAppointment(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-pagination
+            v-model:current-page="mealPage"
+            :page-size="15"
+            :total="mealTotal"
+            layout="total, prev, pager, next"
+            @current-change="loadMealAppointments"
+            style="margin-top: 20px; justify-content: center;"
+          />
+        </el-card>
       </el-main>
     </el-container>
 
@@ -156,6 +328,7 @@ const stats = ref({
   totalMealAppointments: 0
 })
 
+const mainTab = ref('users')
 const users = ref([])
 const loading = ref(false)
 const searchQuery = ref('')
@@ -167,10 +340,38 @@ const activeTab = ref('activity')
 const activityLogs = ref([])
 const contentHistory = ref(null)
 
+const availabilities = ref([])
+const loadingAvailabilities = ref(false)
+const availabilityPage = ref(1)
+const availabilityTotal = ref(0)
+const availabilityFilters = ref({ dayOfWeek: null, campus: null })
+
+const matchRequests = ref([])
+const loadingMatchRequests = ref(false)
+const matchRequestPage = ref(1)
+const matchRequestTotal = ref(0)
+const matchRequestFilters = ref({ status: null })
+
+const mealAppointments = ref([])
+const loadingMealAppointments = ref(false)
+const mealPage = ref(1)
+const mealTotal = ref(0)
+const mealFilters = ref({ status: null })
+
 onMounted(() => {
   loadStats()
   loadUsers()
 })
+
+const handleMainTabChange = (tab) => {
+  if (tab === 'availabilities' && availabilities.value.length === 0) {
+    loadAvailabilities()
+  } else if (tab === 'matchRequests' && matchRequests.value.length === 0) {
+    loadMatchRequests()
+  } else if (tab === 'mealAppointments' && mealAppointments.value.length === 0) {
+    loadMealAppointments()
+  }
+}
 
 const loadStats = async () => {
   try {
@@ -199,9 +400,96 @@ const loadUsers = async () => {
   }
 }
 
+const loadAvailabilities = async () => {
+  loadingAvailabilities.value = true
+  try {
+    const data = await api.get('/admin/overview/availabilities', {
+      params: {
+        page: availabilityPage.value,
+        dayOfWeek: availabilityFilters.value.dayOfWeek,
+        campus: availabilityFilters.value.campus
+      }
+    })
+    availabilities.value = data.items
+    availabilityTotal.value = data.total
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loadingAvailabilities.value = false
+  }
+}
+
+const loadMatchRequests = async () => {
+  loadingMatchRequests.value = true
+  try {
+    const data = await api.get('/admin/overview/match-requests', {
+      params: {
+        page: matchRequestPage.value,
+        status: matchRequestFilters.value.status
+      }
+    })
+    matchRequests.value = data.items
+    matchRequestTotal.value = data.total
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loadingMatchRequests.value = false
+  }
+}
+
+const loadMealAppointments = async () => {
+  loadingMealAppointments.value = true
+  try {
+    const data = await api.get('/admin/overview/meal-appointments', {
+      params: {
+        page: mealPage.value,
+        status: mealFilters.value.status
+      }
+    })
+    mealAppointments.value = data.items
+    mealTotal.value = data.total
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loadingMealAppointments.value = false
+  }
+}
+
 const handleSearch = () => {
   currentPage.value = 1
   loadUsers()
+}
+
+const handleDeleteMatchRequest = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除此代课请求吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await api.delete(`/admin/match-requests/${row._id}`)
+    ElMessage.success('删除成功')
+    loadMatchRequests()
+    loadStats()
+  } catch (error) {
+    if (error !== 'cancel') console.error(error)
+  }
+}
+
+const handleDeleteMealAppointment = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除此约饭记录吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await api.delete(`/admin/meal-appointments/${row._id}`)
+    ElMessage.success('删除成功')
+    loadMealAppointments()
+    loadStats()
+  } catch (error) {
+    if (error !== 'cancel') console.error(error)
+  }
 }
 
 const handleDeleteUser = async (user) => {
@@ -253,6 +541,10 @@ const formatDateTime = (date) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
+const formatDate = (date) => {
+  return new Date(date).toLocaleDateString('zh-CN')
+}
+
 const getRoleText = (role) => {
   const roleMap = {
     substitute: '代课者',
@@ -272,8 +564,24 @@ const getGenderText = (gender) => {
   return genderMap[gender] || '未填写'
 }
 
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN')
+const getFrequencyText = (type) => {
+  const map = { 'long-term': '长期', 'short-term': '短期', 'single': '单次' }
+  return map[type] || type
+}
+
+const getStatusText = (status) => {
+  const map = { 'available': '可用', 'booked': '已预订', 'cancelled': '已取消' }
+  return map[status] || status
+}
+
+const getMatchStatusText = (status) => {
+  const map = { 'pending': '待匹配', 'matched': '已匹配', 'completed': '已完成', 'cancelled': '已取消' }
+  return map[status] || status
+}
+
+const getMealTypeText = (type) => {
+  const map = { 'breakfast': '早餐', 'lunch': '午餐', 'dinner': '晚餐' }
+  return map[type] || type
 }
 </script>
 

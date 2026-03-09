@@ -76,11 +76,11 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const { dayOfWeek, periods, courseInfo, filters, campus, frequencyType } = req.body;
 
-    // 查找该星期几有空的代课者
+    // 查找该星期几有空的代课者（频率类型兼容：long-term可以匹配所有类型）
     const availabilities = await Availability.find({
       dayOfWeek: dayOfWeek,
       status: 'available',
-      campuses: campus // 校区匹配
+      campuses: campus
     }).populate('userId');
 
     // 计算匹配分数

@@ -13,7 +13,7 @@
       <el-main>
         <!-- 主要功能 -->
         <div class="section-title">主要功能</div>
-        <el-row :gutter="20" class="main-features">
+        <el-row :gutter="20" class="main-features" justify="center">
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/availability')">
               <el-icon :size="60" color="#409eff"><Calendar /></el-icon>
@@ -151,10 +151,11 @@ const handleLogout = () => {
 .feature-card.primary {
   padding: 44px 24px;
   background: white;
-  min-height: 240px;
+  height: 240px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
 }
 
 .feature-card.primary:hover {
