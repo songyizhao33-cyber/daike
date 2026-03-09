@@ -46,10 +46,10 @@
 
         <!-- 标签页 -->
         <el-tabs v-model="mainTab" @tab-change="handleMainTabChange">
-          <el-tab-pane label="用户管理" name="users"></tab-pane>
-          <el-tab-pane label="空闲时间总表" name="availabilities"></tab-pane>
-          <el-tab-pane label="代课请求总表" name="matchRequests"></tab-pane>
-          <el-tab-pane label="约饭信息总表" name="mealAppointments"></tab-pane>
+          <el-tab-pane label="用户管理" name="users" />
+          <el-tab-pane label="空闲时间总表" name="availabilities" />
+          <el-tab-pane label="代课请求总表" name="matchRequests" />
+          <el-tab-pane label="约饭信息总表" name="mealAppointments" />
         </el-tabs>
 
         <!-- 用户列表 -->
