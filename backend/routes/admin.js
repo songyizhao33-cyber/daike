@@ -10,11 +10,11 @@ const ActivityLog = require('../models/ActivityLog');
 const Notification = require('../models/Notification');
 const Feedback = require('../models/Feedback');
 const Review = require('../models/Review');
+const InteractionRecord = require('../models/InteractionRecord');
 
 function toPage(value, fallback = 1) {
   const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n < 1) return fallback;
-  return n;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 function toLimit(value, fallback = 20, max = 100) {
@@ -36,6 +36,9 @@ async function cleanupUserTraces(userId) {
     Availability.deleteMany({ userId }),
     MatchRequest.deleteMany({ requesterId: userId }),
     MealAppointment.deleteMany({ userId }),
+    InteractionRecord.deleteMany({
+      $or: [{ sourceUserId: userId }, { targetUserId: userId }]
+    }),
     ActivityLog.deleteMany({ userId }),
     Notification.deleteMany({ $or: [{ userId }, { fromUserId: userId }] }),
     Feedback.deleteMany({ userId }),
@@ -101,7 +104,7 @@ router.get('/users', adminAuthMiddleware, async (req, res) => {
 router.get('/users/:id', adminAuthMiddleware, async (req, res) => {
   try {
     if (!isObjectId(req.params.id)) {
-      return res.status(400).json({ message: '无效的用户ID' });
+      return res.status(400).json({ message: '无效的用户 ID' });
     }
 
     const user = await User.findById(req.params.id).select('-password');
@@ -109,15 +112,18 @@ router.get('/users/:id', adminAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: '用户不存在' });
     }
 
-    const [availabilityCount, matchRequestCount, mealAppointmentCount] = await Promise.all([
+    const [availabilityCount, matchRequestCount, mealAppointmentCount, interactionCount] = await Promise.all([
       Availability.countDocuments({ userId: req.params.id }),
       MatchRequest.countDocuments({ requesterId: req.params.id }),
-      MealAppointment.countDocuments({ userId: req.params.id })
+      MealAppointment.countDocuments({ userId: req.params.id }),
+      InteractionRecord.countDocuments({
+        $or: [{ sourceUserId: req.params.id }, { targetUserId: req.params.id }]
+      })
     ]);
 
     res.json({
       user,
-      stats: { availabilityCount, matchRequestCount, mealAppointmentCount }
+      stats: { availabilityCount, matchRequestCount, mealAppointmentCount, interactionCount }
     });
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });
@@ -127,7 +133,7 @@ router.get('/users/:id', adminAuthMiddleware, async (req, res) => {
 router.get('/users/:id/activity-log', adminAuthMiddleware, async (req, res) => {
   try {
     if (!isObjectId(req.params.id)) {
-      return res.status(400).json({ message: '无效的用户ID' });
+      return res.status(400).json({ message: '无效的用户 ID' });
     }
 
     const page = toPage(req.query.page);
@@ -160,19 +166,28 @@ router.get('/users/:id/activity-log', adminAuthMiddleware, async (req, res) => {
 router.get('/users/:id/content-history', adminAuthMiddleware, async (req, res) => {
   try {
     if (!isObjectId(req.params.id)) {
-      return res.status(400).json({ message: '无效的用户ID' });
+      return res.status(400).json({ message: '无效的用户 ID' });
     }
 
-    const [availabilities, matchRequests, mealAppointments] = await Promise.all([
+    const [availabilities, matchRequests, mealAppointments, interactions] = await Promise.all([
       Availability.find({ userId: req.params.id }).sort({ createdAt: -1 }).limit(10),
       MatchRequest.find({ requesterId: req.params.id })
-        .populate('matchedSubstitutes.userId', 'username')
+        .populate('matchedSubstitutes.userId', 'username profile')
+        .populate('selectedSubstitute', 'username profile')
         .sort({ createdAt: -1 })
         .limit(10),
-      MealAppointment.find({ userId: req.params.id }).sort({ createdAt: -1 }).limit(10)
+      MealAppointment.find({ userId: req.params.id })
+        .populate('interestedUsers.userId', 'username profile')
+        .sort({ createdAt: -1 })
+        .limit(10),
+      InteractionRecord.find({
+        $or: [{ sourceUserId: req.params.id }, { targetUserId: req.params.id }]
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
     ]);
 
-    res.json({ availabilities, matchRequests, mealAppointments });
+    res.json({ availabilities, matchRequests, mealAppointments, interactions });
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });
   }
@@ -182,13 +197,14 @@ router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     if (!isObjectId(id)) {
-      return res.status(400).json({ message: '无效的用户ID' });
+      return res.status(400).json({ message: '无效的用户 ID' });
     }
 
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: '用户不存在' });
     }
+
     if (user.role === 'admin') {
       return res.status(403).json({ message: '不能删除管理员账号' });
     }
@@ -214,11 +230,19 @@ router.get('/stats', adminAuthMiddleware, async (req, res) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const [totalUsers, totalAvailabilities, totalMatchRequests, totalMealAppointments, newUsersLast7Days] = await Promise.all([
+    const [
+      totalUsers,
+      totalAvailabilities,
+      totalMatchRequests,
+      totalMealAppointments,
+      totalInteractions,
+      newUsersLast7Days
+    ] = await Promise.all([
       User.countDocuments({ role: { $ne: 'admin' } }),
       Availability.countDocuments(),
       MatchRequest.countDocuments(),
       MealAppointment.countDocuments(),
+      InteractionRecord.countDocuments(),
       User.countDocuments({ createdAt: { $gte: sevenDaysAgo }, role: { $ne: 'admin' } })
     ]);
 
@@ -227,6 +251,7 @@ router.get('/stats', adminAuthMiddleware, async (req, res) => {
       totalAvailabilities,
       totalMatchRequests,
       totalMealAppointments,
+      totalInteractions,
       newUsersLast7Days
     });
   } catch (error) {
@@ -239,12 +264,13 @@ router.get('/overview/availabilities', adminAuthMiddleware, async (req, res) => 
     const page = toPage(req.query.page);
     const limit = toLimit(req.query.limit, 15, 50);
     const query = {};
+
     if (req.query.dayOfWeek) query.dayOfWeek = Number.parseInt(req.query.dayOfWeek, 10);
     if (req.query.campus) query.campuses = req.query.campus;
 
     const [items, total] = await Promise.all([
       Availability.find(query)
-        .populate('userId', 'username profile.major profile.grade')
+        .populate('userId', 'username profile.major profile.grade profile.email profile.wechat profile.phone')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip((page - 1) * limit),
@@ -262,12 +288,13 @@ router.get('/overview/match-requests', adminAuthMiddleware, async (req, res) => 
     const page = toPage(req.query.page);
     const limit = toLimit(req.query.limit, 15, 50);
     const query = {};
+
     if (req.query.status) query.status = req.query.status;
 
     const [items, total] = await Promise.all([
       MatchRequest.find(query)
-        .populate('requesterId', 'username')
-        .populate('selectedSubstitute', 'username')
+        .populate('requesterId', 'username profile')
+        .populate('selectedSubstitute', 'username profile')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip((page - 1) * limit),
@@ -280,16 +307,44 @@ router.get('/overview/match-requests', adminAuthMiddleware, async (req, res) => 
   }
 });
 
+router.get('/overview/match-requests/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ message: '无效的代课需求 ID' });
+    }
+
+    const matchRequest = await MatchRequest.findById(req.params.id)
+      .populate('requesterId', 'username profile')
+      .populate('matchedSubstitutes.userId', 'username profile')
+      .populate('selectedSubstitute', 'username profile');
+
+    if (!matchRequest) {
+      return res.status(404).json({ message: '代课需求不存在' });
+    }
+
+    const interactions = await InteractionRecord.find({
+      relatedModel: 'MatchRequest',
+      relatedId: req.params.id
+    }).sort({ createdAt: -1 });
+
+    res.json({ matchRequest, interactions });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
 router.get('/overview/meal-appointments', adminAuthMiddleware, async (req, res) => {
   try {
     const page = toPage(req.query.page);
     const limit = toLimit(req.query.limit, 15, 50);
     const query = {};
+
     if (req.query.status) query.status = req.query.status;
 
     const [items, total] = await Promise.all([
       MealAppointment.find(query)
-        .populate('userId', 'username')
+        .populate('userId', 'username profile')
+        .populate('interestedUsers.userId', 'username profile')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip((page - 1) * limit),
@@ -302,30 +357,56 @@ router.get('/overview/meal-appointments', adminAuthMiddleware, async (req, res) 
   }
 });
 
+router.get('/overview/meal-appointments/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ message: '无效的约饭 ID' });
+    }
+
+    const mealAppointment = await MealAppointment.findById(req.params.id)
+      .populate('userId', 'username profile')
+      .populate('interestedUsers.userId', 'username profile');
+
+    if (!mealAppointment) {
+      return res.status(404).json({ message: '约饭记录不存在' });
+    }
+
+    const interactions = await InteractionRecord.find({
+      relatedModel: 'MealAppointment',
+      relatedId: req.params.id
+    }).sort({ createdAt: -1 });
+
+    res.json({ mealAppointment, interactions });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
 router.delete('/match-requests/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     if (!isObjectId(id)) {
-      return res.status(400).json({ message: '无效的代课请求ID' });
+      return res.status(400).json({ message: '无效的代课需求 ID' });
     }
 
     const target = await MatchRequest.findByIdAndDelete(id);
     if (!target) {
-      return res.status(404).json({ message: '代课请求不存在' });
+      return res.status(404).json({ message: '代课需求不存在' });
     }
 
     await Promise.all([
       Notification.deleteMany({ relatedId: id }),
+      InteractionRecord.deleteMany({ relatedModel: 'MatchRequest', relatedId: id }),
       ActivityLog.deleteMany({ relatedId: id, relatedModel: 'MatchRequest' }),
       ActivityLog.create({
         userId: req.userId,
         actionType: 'admin_delete_match_request',
-        description: `管理员删除代课请求：${id}`,
+        description: `管理员删除代课需求：${id}`,
         metadata: { matchRequestId: id }
       })
     ]);
 
-    res.json({ message: '代课请求已删除' });
+    res.json({ message: '代课需求已删除' });
   } catch (error) {
     res.status(500).json({ message: '服务器错误', error: error.message });
   }
@@ -335,7 +416,7 @@ router.delete('/meal-appointments/:id', adminAuthMiddleware, async (req, res) =>
   try {
     const { id } = req.params;
     if (!isObjectId(id)) {
-      return res.status(400).json({ message: '无效的约饭ID' });
+      return res.status(400).json({ message: '无效的约饭 ID' });
     }
 
     const target = await MealAppointment.findByIdAndDelete(id);
@@ -345,6 +426,7 @@ router.delete('/meal-appointments/:id', adminAuthMiddleware, async (req, res) =>
 
     await Promise.all([
       Notification.deleteMany({ relatedId: id }),
+      InteractionRecord.deleteMany({ relatedModel: 'MealAppointment', relatedId: id }),
       ActivityLog.deleteMany({ relatedId: id, relatedModel: 'MealAppointment' }),
       ActivityLog.create({
         userId: req.userId,

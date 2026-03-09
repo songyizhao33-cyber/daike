@@ -8,7 +8,6 @@
         </div>
       </el-header>
       <el-main>
-        <!-- 发布约饭 -->
         <el-card>
           <template #header>
             <span>发布约饭</span>
@@ -23,7 +22,7 @@
                 :disabled-date="disabledDate"
               />
             </el-form-item>
-            <el-form-item label="用餐类型" required>
+            <el-form-item label="类型" required>
               <el-radio-group v-model="form.mealType">
                 <el-radio label="breakfast">早餐</el-radio>
                 <el-radio label="lunch">午餐</el-radio>
@@ -32,12 +31,7 @@
             </el-form-item>
             <el-form-item label="时间" required>
               <el-select v-model="form.mealTime" placeholder="选择时间" style="width: 100%">
-                <el-option
-                  v-for="time in getAvailableTimes()"
-                  :key="time"
-                  :label="time"
-                  :value="time"
-                />
+                <el-option v-for="time in getAvailableTimes()" :key="time" :label="time" :value="time" />
               </el-select>
             </el-form-item>
             <el-form-item label="校区" required>
@@ -49,10 +43,10 @@
               </el-select>
             </el-form-item>
             <el-form-item label="地点" required>
-              <el-input v-model="form.location" placeholder="例如：食堂一楼" />
+              <el-input v-model="form.location" placeholder="例如：北区食堂、校门口" />
             </el-form-item>
             <el-form-item label="备注">
-              <el-input v-model="form.note" type="textarea" :rows="3" placeholder="可以写一些额外信息" />
+              <el-input v-model="form.note" type="textarea" :rows="3" placeholder="可补充口味、预算、同行人数等" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handlePublish">发布约饭</el-button>
@@ -60,18 +54,16 @@
           </el-form>
         </el-card>
 
-        <!-- 浏览约饭 -->
         <el-card style="margin-top: 20px">
           <template #header>
             <div class="card-header">
               <span>浏览约饭信息</span>
-              <div>
+              <div class="filters">
                 <el-date-picker
                   v-model="filterDate"
                   type="date"
                   placeholder="筛选日期"
                   size="small"
-                  style="margin-right: 10px"
                   @change="loadAppointments"
                 />
                 <el-select
@@ -79,7 +71,7 @@
                   placeholder="筛选校区"
                   size="small"
                   clearable
-                  style="width: 120px; margin-right: 10px"
+                  style="width: 120px"
                   @change="loadAppointments"
                 >
                   <el-option label="邯郸" value="邯郸" />
@@ -96,7 +88,7 @@
               <template #default="{ row }">
                 <div :class="{ 'expired-text': isExpired(row.date) }">
                   {{ formatDate(row.date) }}
-                  <el-tag v-if="isExpired(row.date)" type="info" size="small" style="margin-left: 5px">已过期</el-tag>
+                  <el-tag v-if="isExpired(row.date)" type="info" size="small" style="margin-left: 6px">已过期</el-tag>
                 </div>
               </template>
             </el-table-column>
@@ -105,30 +97,22 @@
                 {{ getMealTypeText(row.mealType) }}
               </template>
             </el-table-column>
-            <el-table-column prop="mealTime" label="时间" width="80" />
-            <el-table-column prop="campus" label="校区" width="80" />
-            <el-table-column prop="location" label="地点" width="150" />
-            <el-table-column prop="note" label="备注" />
-            <el-table-column label="发布者" width="120">
+            <el-table-column prop="mealTime" label="时间" width="90" />
+            <el-table-column prop="campus" label="校区" width="90" />
+            <el-table-column prop="location" label="地点" min-width="160" />
+            <el-table-column prop="note" label="备注" min-width="160" />
+            <el-table-column label="发布者" width="160">
               <template #default="{ row }">
-                {{ row.userId.username }}
+                <div>{{ row.userId.username }}</div>
+                <div class="subtext">{{ row.userId.profile?.major || '-' }} / {{ row.userId.profile?.grade || '-' }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="联系方式" width="180">
+            <el-table-column label="已约人数" width="100">
               <template #default="{ row }">
-                <div>微信: {{ row.userId.profile.wechat || '-' }}</div>
-                <div>邮箱: {{ row.userId.profile.email || '-' }}</div>
+                <el-tag type="success">{{ row.interestedUsers?.length || 0 }} 人</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="感兴趣" width="100">
-              <template #default="{ row }">
-                <el-tag v-if="row.interestedUsers && row.interestedUsers.length > 0" type="success">
-                  {{ row.interestedUsers.length }} 人
-                </el-tag>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120">
+            <el-table-column label="操作" width="140">
               <template #default="{ row }">
                 <el-button
                   v-if="!isMyAppointment(row) && !hasExpressedInterest(row)"
@@ -136,7 +120,7 @@
                   size="small"
                   @click="handleExpressInterest(row._id)"
                 >
-                  约一个
+                  约一下
                 </el-button>
                 <el-button
                   v-else-if="!isMyAppointment(row) && hasExpressedInterest(row)"
@@ -144,7 +128,7 @@
                   size="small"
                   @click="handleCancelInterest(row._id)"
                 >
-                  取消兴趣
+                  取消
                 </el-button>
                 <el-tag v-else type="info" size="small">我的约饭</el-tag>
               </template>
@@ -152,7 +136,6 @@
           </el-table>
         </el-card>
 
-        <!-- 我的约饭 -->
         <el-card style="margin-top: 20px">
           <template #header>
             <div class="card-header">
@@ -171,10 +154,10 @@
                 {{ getMealTypeText(row.mealType) }}
               </template>
             </el-table-column>
-            <el-table-column prop="mealTime" label="时间" width="80" />
-            <el-table-column prop="campus" label="校区" width="80" />
-            <el-table-column prop="location" label="地点" width="150" />
-            <el-table-column prop="note" label="备注" />
+            <el-table-column prop="mealTime" label="时间" width="90" />
+            <el-table-column prop="campus" label="校区" width="90" />
+            <el-table-column prop="location" label="地点" min-width="160" />
+            <el-table-column prop="note" label="备注" min-width="160" />
             <el-table-column label="状态" width="100">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
@@ -182,7 +165,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="感兴趣的人" width="120">
+            <el-table-column label="点击约一下的人" width="140">
               <template #default="{ row }">
                 <el-button
                   v-if="row.interestedUsers && row.interestedUsers.length > 0"
@@ -205,13 +188,7 @@
                 >
                   取消
                 </el-button>
-                <el-button
-                  type="danger"
-                  size="small"
-                  @click="handleDelete(row._id)"
-                >
-                  删除
-                </el-button>
+                <el-button type="danger" size="small" @click="handleDelete(row._id)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -219,34 +196,42 @@
       </el-main>
     </el-container>
 
-    <!-- 感兴趣用户对话框 -->
-    <el-dialog
-      v-model="interestedDialogVisible"
-      title="感兴趣的用户"
-      width="600px"
-    >
+    <el-dialog v-model="interestedDialogVisible" title="点击了你约饭的人" width="720px">
       <el-table :data="currentInterestedUsers" style="width: 100%">
         <el-table-column prop="userId.username" label="用户名" width="120" />
         <el-table-column label="性别" width="80">
           <template #default="{ row }">
-            {{ row.userId.profile.gender === 'male' ? '男' : row.userId.profile.gender === 'female' ? '女' : '其他' }}
+            {{ getGenderText(row.userId.profile?.gender) }}
           </template>
         </el-table-column>
-        <el-table-column prop="userId.profile.major" label="专业" />
+        <el-table-column prop="userId.profile.major" label="专业" min-width="140" />
         <el-table-column prop="userId.profile.grade" label="年级" width="100" />
-        <el-table-column label="联系方式" width="180">
+        <el-table-column label="联系方式" min-width="200">
           <template #default="{ row }">
-            <div>微信: {{ row.userId.profile.wechat || '-' }}</div>
-            <div>邮箱: {{ row.userId.profile.email || '-' }}</div>
+            <div>微信: {{ row.userId.profile?.wechat || '-' }}</div>
+            <div>邮箱: {{ row.userId.profile?.email || '-' }}</div>
           </template>
         </el-table-column>
       </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="contactDialogVisible" title="约饭双方信息" width="680px">
+      <el-descriptions v-if="contactDialogData" :column="2" border>
+        <el-descriptions-item label="对方用户名">{{ contactDialogData.username }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ getGenderText(contactDialogData.profile?.gender) }}</el-descriptions-item>
+        <el-descriptions-item label="专业">{{ contactDialogData.profile?.major || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="年级">{{ contactDialogData.profile?.grade || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="电话">{{ contactDialogData.profile?.phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="微信">{{ contactDialogData.profile?.wechat || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ contactDialogData.profile?.email || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="约饭信息" :span="2">{{ contactContextText }}</el-descriptions-item>
+      </el-descriptions>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 import { useUserStore } from '@/stores/user'
@@ -268,6 +253,9 @@ const filterDate = ref(null)
 const filterCampus = ref('')
 const interestedDialogVisible = ref(false)
 const currentInterestedUsers = ref([])
+const contactDialogVisible = ref(false)
+const contactDialogData = ref(null)
+const contactContext = ref(null)
 
 const mealTimes = {
   breakfast: ['07:00', '07:30', '08:00'],
@@ -275,60 +263,50 @@ const mealTimes = {
   dinner: ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00']
 }
 
-const disabledDate = (time) => {
-  return time.getTime() < Date.now() - 24 * 60 * 60 * 1000
-}
+const contactContextText = computed(() => {
+  const context = contactContext.value
+  if (!context) return '-'
+  return `${formatDate(context.date)} ${context.mealTime} ${getMealTypeText(context.mealType)}，${context.campus}，${context.location}`
+})
 
-const getAvailableTimes = () => {
-  return mealTimes[form.value.mealType] || []
+const disabledDate = (time) => time.getTime() < Date.now() - 24 * 60 * 60 * 1000
+
+const getAvailableTimes = () => mealTimes[form.value.mealType] || []
+
+const getGenderText = (gender) => {
+  const map = { male: '男', female: '女', other: '其他' }
+  return map[gender] || '-'
 }
 
 const getMealTypeText = (type) => {
-  const map = {
-    breakfast: '早餐',
-    lunch: '午餐',
-    dinner: '晚餐'
-  }
+  const map = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' }
   return map[type] || type
 }
 
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN')
-}
+const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
+const isExpired = (date) => new Date(date) < new Date()
 
-const isExpired = (date) => {
-  return new Date(date) < new Date()
+const resetForm = () => {
+  form.value = {
+    date: null,
+    mealType: 'lunch',
+    mealTime: '',
+    campus: '',
+    location: '',
+    note: ''
+  }
 }
 
 const handlePublish = async () => {
-  if (!form.value.date) {
-    ElMessage.warning('请选择日期')
-    return
-  }
-  if (!form.value.mealTime) {
-    ElMessage.warning('请选择时间')
-    return
-  }
-  if (!form.value.campus) {
-    ElMessage.warning('请选择校区')
-    return
-  }
-  if (!form.value.location) {
-    ElMessage.warning('请输入地点')
+  if (!form.value.date || !form.value.mealTime || !form.value.campus || !form.value.location) {
+    ElMessage.warning('请完整填写日期、时间、校区和地点')
     return
   }
 
   try {
     await api.post('/meal', form.value)
     ElMessage.success('发布成功')
-    form.value = {
-      date: null,
-      mealType: 'lunch',
-      mealTime: '',
-      campus: '',
-      location: '',
-      note: ''
-    }
+    resetForm()
     loadAppointments()
     loadMyAppointments()
   } catch (error) {
@@ -339,15 +317,9 @@ const handlePublish = async () => {
 const loadAppointments = async () => {
   try {
     const params = {}
-    if (filterDate.value) {
-      params.date = filterDate.value.toISOString().split('T')[0]
-    }
-    if (filterCampus.value) {
-      params.campus = filterCampus.value
-    }
-
-    const data = await api.get('/meal/browse', { params })
-    appointments.value = data
+    if (filterDate.value) params.date = filterDate.value.toISOString().split('T')[0]
+    if (filterCampus.value) params.campus = filterCampus.value
+    appointments.value = await api.get('/meal/browse', { params })
   } catch (error) {
     console.error(error)
   }
@@ -356,7 +328,6 @@ const loadAppointments = async () => {
 const loadMyAppointments = async () => {
   try {
     const data = await api.get('/meal/my')
-    // 确保每个约饭都有 interestedUsers 数组
     myAppointments.value = data.map(item => ({
       ...item,
       interestedUsers: item.interestedUsers || []
@@ -370,8 +341,8 @@ const handleCancel = async (id) => {
   try {
     await api.put(`/meal/${id}/cancel`)
     ElMessage.success('取消成功')
-    loadMyAppointments()
     loadAppointments()
+    loadMyAppointments()
   } catch (error) {
     console.error(error)
   }
@@ -379,20 +350,15 @@ const handleCancel = async (id) => {
 
 const handleDelete = async (id) => {
   try {
-    await ElMessageBox.confirm(
-      '确定要删除这条约饭信息吗？删除后无法恢复。',
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
+    await ElMessageBox.confirm('确定要删除这条约饭信息吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await api.delete(`/meal/${id}`)
     ElMessage.success('删除成功')
-    loadMyAppointments()
     loadAppointments()
+    loadMyAppointments()
   } catch (error) {
     if (error !== 'cancel') {
       console.error(error)
@@ -400,42 +366,38 @@ const handleDelete = async (id) => {
   }
 }
 
-// 判断是否是我的约饭
-const isMyAppointment = (appointment) => {
-  return appointment.userId._id === userStore.user?.id
-}
+const isMyAppointment = (appointment) => appointment.userId._id === userStore.user?.id
 
-// 判断是否已表达兴趣
 const hasExpressedInterest = (appointment) => {
   if (!appointment.interestedUsers) return false
-  return appointment.interestedUsers.some(
-    item => item.userId._id === userStore.user?.id
-  )
+  return appointment.interestedUsers.some(item => item.userId._id === userStore.user?.id)
 }
 
-// 表达兴趣
 const handleExpressInterest = async (id) => {
   try {
-    await api.post(`/meal/${id}/interest`)
-    ElMessage.success('已表达兴趣')
+    const data = await api.post(`/meal/${id}/interest`)
+    contactDialogData.value = data.publisher
+    contactContext.value = data.context
+    contactDialogVisible.value = true
+    ElMessage.success('双方信息已开放，请尽快联系')
     loadAppointments()
+    loadMyAppointments()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    console.error(error)
   }
 }
 
-// 取消兴趣
 const handleCancelInterest = async (id) => {
   try {
     await api.delete(`/meal/${id}/interest`)
-    ElMessage.success('已取消兴趣')
+    ElMessage.success('已取消')
     loadAppointments()
+    loadMyAppointments()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    console.error(error)
   }
 }
 
-// 显示感兴趣的用户
 const showInterestedUsers = (appointment) => {
   currentInterestedUsers.value = appointment.interestedUsers || []
   interestedDialogVisible.value = true
@@ -477,6 +439,18 @@ onMounted(() => {
   align-items: center;
 }
 
+.filters {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.subtext {
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 .expired-text {
   color: #909399;
 }
@@ -486,23 +460,15 @@ onMounted(() => {
     font-size: 18px;
   }
 
-  .el-form-item__label {
-    width: 80px !important;
-  }
-
-  .el-table {
-    font-size: 12px;
-  }
-
-  .el-button {
-    padding: 8px 12px;
-    font-size: 12px;
-  }
-
   .card-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .filters {
+    width: 100%;
+    flex-wrap: wrap;
   }
 }
 </style>

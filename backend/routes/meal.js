@@ -3,9 +3,25 @@ const router = express.Router();
 const MealAppointment = require('../models/MealAppointment');
 const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
+const InteractionRecord = require('../models/InteractionRecord');
+const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
 
-// 创建约饭
+function buildUserSnapshot(user) {
+  return {
+    userId: user._id,
+    username: user.username,
+    profile: {
+      gender: user.profile?.gender || '',
+      major: user.profile?.major || '',
+      grade: user.profile?.grade || '',
+      phone: user.profile?.phone || '',
+      email: user.profile?.email || '',
+      wechat: user.profile?.wechat || ''
+    }
+  };
+}
+
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { date, mealTime, mealType, location, campus, note } = req.body;
@@ -22,11 +38,10 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await appointment.save();
 
-    // 记录活动日志
     await ActivityLog.create({
       userId: req.userId,
       actionType: 'create_meal',
-      description: `发布约饭：${mealType} - ${location}`,
+      description: `发布约饭：${mealType} ${mealTime} ${location}`,
       relatedId: appointment._id,
       relatedModel: 'MealAppointment',
       metadata: { date, mealTime, campus }
@@ -38,11 +53,9 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// 获取所有约饭信息（浏览）- 智能排序
 router.get('/browse', authMiddleware, async (req, res) => {
   try {
     const { date, campus, mealType } = req.query;
-
     const query = { status: 'active' };
 
     if (date) {
@@ -53,49 +66,31 @@ router.get('/browse', authMiddleware, async (req, res) => {
       query.date = { $gte: startDate, $lte: endDate };
     }
 
-    if (campus) {
-      query.campus = campus;
-    }
-
-    if (mealType) {
-      query.mealType = mealType;
-    }
+    if (campus) query.campus = campus;
+    if (mealType) query.mealType = mealType;
 
     const appointments = await MealAppointment.find(query)
       .populate('userId', 'username profile')
       .populate('interestedUsers.userId', 'username profile');
 
-    // 智能排序：未过期的按时间从近到远，已过期的放最后
     const now = new Date();
-    const sortedAppointments = appointments.sort((a, b) => {
+    appointments.sort((a, b) => {
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
+      const expiredA = dateA < now;
+      const expiredB = dateB < now;
 
-      // 判断是否过期
-      const isExpiredA = dateA < now;
-      const isExpiredB = dateB < now;
-
-      // 未过期的排在前面
-      if (isExpiredA && !isExpiredB) return 1;
-      if (!isExpiredA && isExpiredB) return -1;
-
-      // 同为未过期或同为已过期，按时间排序
-      // 未过期的：从近到远（升序）
-      // 已过期的：从近到远（降序，最近过期的在前）
-      if (!isExpiredA && !isExpiredB) {
-        return dateA - dateB; // 升序
-      } else {
-        return dateB - dateA; // 降序
-      }
+      if (expiredA && !expiredB) return 1;
+      if (!expiredA && expiredB) return -1;
+      return expiredA ? dateB - dateA : dateA - dateB;
     });
 
-    res.json(sortedAppointments);
+    res.json(appointments);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// 获取我的约饭
 router.get('/my', authMiddleware, async (req, res) => {
   try {
     const appointments = await MealAppointment.find({ userId: req.userId })
@@ -108,7 +103,6 @@ router.get('/my', authMiddleware, async (req, res) => {
   }
 });
 
-// 取消约饭（标记为已取消）
 router.put('/:id/cancel', authMiddleware, async (req, res) => {
   try {
     const appointment = await MealAppointment.findOne({
@@ -121,7 +115,13 @@ router.put('/:id/cancel', authMiddleware, async (req, res) => {
     }
 
     appointment.status = 'cancelled';
-    await appointment.save();
+    await Promise.all([
+      appointment.save(),
+      InteractionRecord.updateMany(
+        { relatedModel: 'MealAppointment', relatedId: appointment._id },
+        { status: 'cancelled' }
+      )
+    ]);
 
     res.json({ message: '取消成功' });
   } catch (error) {
@@ -129,7 +129,6 @@ router.put('/:id/cancel', authMiddleware, async (req, res) => {
   }
 });
 
-// 删除约饭（永久删除）
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const appointment = await MealAppointment.findOne({
@@ -141,15 +140,19 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: '约饭信息不存在' });
     }
 
-    await MealAppointment.findByIdAndDelete(req.params.id);
-
-    // 记录活动日志
-    await ActivityLog.create({
-      userId: req.userId,
-      actionType: 'delete_meal',
-      description: '删除约饭信息',
-      metadata: { appointmentId: req.params.id }
-    });
+    await Promise.all([
+      MealAppointment.findByIdAndDelete(req.params.id),
+      InteractionRecord.updateMany(
+        { relatedModel: 'MealAppointment', relatedId: req.params.id },
+        { status: 'cancelled' }
+      ),
+      ActivityLog.create({
+        userId: req.userId,
+        actionType: 'delete_meal',
+        description: '删除约饭信息',
+        metadata: { appointmentId: req.params.id }
+      })
+    ]);
 
     res.json({ message: '删除成功' });
   } catch (error) {
@@ -157,7 +160,6 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// 表达对约饭的兴趣（约一个）
 router.post('/:id/interest', authMiddleware, async (req, res) => {
   try {
     const appointment = await MealAppointment.findById(req.params.id);
@@ -170,54 +172,100 @@ router.post('/:id/interest', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: '该约饭已取消' });
     }
 
-    // 不能对自己的约饭表达兴趣
     if (appointment.userId.toString() === req.userId.toString()) {
-      return res.status(400).json({ message: '不能对自己的约饭表达兴趣' });
+      return res.status(400).json({ message: '不能对自己的约饭点击“约一下”' });
     }
 
-    // 检查是否已经表达过兴趣
     const alreadyInterested = appointment.interestedUsers.some(
       item => item.userId.toString() === req.userId.toString()
     );
 
     if (alreadyInterested) {
-      return res.status(400).json({ message: '您已经表达过兴趣了' });
+      return res.status(400).json({ message: '你已经点击过“约一下”了' });
     }
 
-    // 添加到感兴趣列表
+    const [publisher, interestedUser] = await Promise.all([
+      User.findById(appointment.userId),
+      User.findById(req.userId)
+    ]);
+
     appointment.interestedUsers.push({
       userId: req.userId,
       expressedAt: new Date()
     });
 
-    await appointment.save();
+    const publisherSnapshot = buildUserSnapshot(publisher);
+    const interestedSnapshot = buildUserSnapshot(interestedUser);
+    const context = {
+      date: appointment.date,
+      mealTime: appointment.mealTime,
+      mealType: appointment.mealType,
+      location: appointment.location,
+      campus: appointment.campus,
+      note: appointment.note || ''
+    };
 
-    // 创建通知
-    await Notification.create({
-      userId: appointment.userId,
-      type: 'meal_interest',
-      title: '有人对你的约饭感兴趣',
-      content: '有人想和你一起吃饭，快去查看吧！',
-      relatedId: appointment._id,
-      fromUserId: req.userId
+    await Promise.all([
+      appointment.save(),
+      InteractionRecord.create({
+        category: 'meal',
+        actionType: 'meal_interest',
+        sourceUserId: interestedUser._id,
+        targetUserId: publisher._id,
+        relatedModel: 'MealAppointment',
+        relatedId: appointment._id,
+        sourceSnapshot: interestedSnapshot,
+        targetSnapshot: publisherSnapshot,
+        context
+      }),
+      Notification.create({
+        userId: publisher._id,
+        type: 'meal_interest',
+        title: '有人点击了你的约饭',
+        content: `${interestedUser.username} 想和你一起吃饭，双方联系方式已经开放。`,
+        relatedId: appointment._id,
+        fromUserId: interestedUser._id,
+        payload: {
+          category: 'meal',
+          publisher: publisherSnapshot,
+          interestedUser: interestedSnapshot,
+          context
+        }
+      }),
+      Notification.create({
+        userId: interestedUser._id,
+        type: 'meal_interest',
+        title: '已获取约饭对象信息',
+        content: `你已点击 ${publisher.username} 的约饭信息，请尽快联系对方。`,
+        relatedId: appointment._id,
+        fromUserId: publisher._id,
+        payload: {
+          category: 'meal',
+          publisher: publisherSnapshot,
+          interestedUser: interestedSnapshot,
+          context
+        }
+      }),
+      ActivityLog.create({
+        userId: req.userId,
+        actionType: 'express_meal_interest',
+        description: `点击约饭：${appointment.location} ${appointment.mealTime}`,
+        relatedId: appointment._id,
+        relatedModel: 'MealAppointment'
+      })
+    ]);
+
+    res.json({
+      message: '已成功约一下',
+      publisher: publisherSnapshot,
+      interestedUser: interestedSnapshot,
+      context
     });
-
-    // 记录活动日志
-    await ActivityLog.create({
-      userId: req.userId,
-      actionType: 'express_meal_interest',
-      description: '对约饭表达兴趣',
-      relatedId: appointment._id,
-      relatedModel: 'MealAppointment'
-    });
-
-    res.json({ message: '已表达兴趣' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// 取消对约饭的兴趣
 router.delete('/:id/interest', authMiddleware, async (req, res) => {
   try {
     const appointment = await MealAppointment.findById(req.params.id);
@@ -226,12 +274,21 @@ router.delete('/:id/interest', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: '约饭信息不存在' });
     }
 
-    // 从感兴趣列表中移除
     appointment.interestedUsers = appointment.interestedUsers.filter(
       item => item.userId.toString() !== req.userId.toString()
     );
 
-    await appointment.save();
+    await Promise.all([
+      appointment.save(),
+      InteractionRecord.updateMany(
+        {
+          relatedModel: 'MealAppointment',
+          relatedId: appointment._id,
+          sourceUserId: req.userId
+        },
+        { status: 'cancelled' }
+      )
+    ]);
 
     res.json({ message: '已取消兴趣' });
   } catch (error) {

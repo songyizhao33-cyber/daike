@@ -35,6 +35,10 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  payload: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
   // 是否已读
   isRead: {
     type: Boolean,

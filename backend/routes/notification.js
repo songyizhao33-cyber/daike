@@ -7,7 +7,7 @@ const Notification = require('../models/Notification');
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const notifications = await Notification.find({ userId: req.userId })
-      .populate('fromUserId', 'username profile.gender profile.major')
+      .populate('fromUserId', 'username profile')
       .sort({ createdAt: -1 })
       .limit(50);
 

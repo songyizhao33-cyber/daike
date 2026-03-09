@@ -214,11 +214,13 @@ router.delete('/account', async (req, res) => {
     const MatchRequest = require('../models/MatchRequest');
     const MealAppointment = require('../models/MealAppointment');
     const Notification = require('../models/Notification');
+    const InteractionRecord = require('../models/InteractionRecord');
 
     await Availability.deleteMany({ userId });
     await MatchRequest.deleteMany({ requesterId: userId });
     await MealAppointment.deleteMany({ userId });
-    await Notification.deleteMany({ userId });
+    await Notification.deleteMany({ $or: [{ userId }, { fromUserId: userId }] });
+    await InteractionRecord.deleteMany({ $or: [{ sourceUserId: userId }, { targetUserId: userId }] });
     await ActivityLog.deleteMany({ userId });
 
     // 记录删除账号日志（在删除前）

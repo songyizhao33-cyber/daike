@@ -15,7 +15,9 @@ const activityLogSchema = new mongoose.Schema({
       'create_match_request', 'select_substitute', 'view_contact',
       'create_meal', 'express_meal_interest', 'cancel_meal', 'delete_meal',
       'draw_tarot',
-      'update_profile', 'delete_account'
+      'update_profile', 'delete_account',
+      'admin_delete_user', 'admin_delete_match_request', 'admin_delete_meal',
+      'delete_match_request'
     ],
     required: true
   },
