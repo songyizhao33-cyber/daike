@@ -369,4 +369,31 @@ router.post('/:id/view', authMiddleware, async (req, res) => {
   }
 });
 
+// 用户删除自己的代课请求
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const matchRequest = await MatchRequest.findOne({
+      _id: req.params.id,
+      requesterId: req.userId
+    });
+
+    if (!matchRequest) {
+      return res.status(404).json({ message: '未找到该匹配请求或无权删除' });
+    }
+
+    await MatchRequest.findByIdAndDelete(req.params.id);
+
+    await ActivityLog.create({
+      userId: req.userId,
+      actionType: 'delete_match_request',
+      description: '删除代课请求',
+      metadata: { matchRequestId: req.params.id }
+    });
+
+    res.json({ message: '删除成功' });
+  } catch (error) {
+    res.status(500).json({ message: '服务器错误', error: error.message });
+  }
+});
+
 module.exports = router;

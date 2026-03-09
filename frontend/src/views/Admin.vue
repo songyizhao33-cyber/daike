@@ -190,7 +190,7 @@
               <template #default="{ row }">{{ row.requesterId?.username }}</template>
             </el-table-column>
             <el-table-column label="课程信息" width="200">
-              <template #default="{ row }">{{ row.courseInfo }}</template>
+              <template #default="{ row }">{{ row.courseInfo?.courseName || '-' }}</template>
             </el-table-column>
             <el-table-column label="星期" width="80">
               <template #default="{ row }">周{{ ['一','二','三','四','五','六'][row.dayOfWeek - 1] }}</template>

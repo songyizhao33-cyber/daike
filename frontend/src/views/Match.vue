@@ -62,25 +62,25 @@
           <template #header>
             <span>匹配结果（共 {{ matchResult.matchedCount }} 人）</span>
           </template>
-          <el-table :data="matchResult.matchRequest.matchedSubstitutes" style="width: 100%">
+          <el-table :data="matchResult.matchRequest.matchedSubstitutes" style="width: 100%" :table-layout="'fixed'">
             <el-table-column prop="userId.username" label="用户名" width="120" />
             <el-table-column label="性别" width="80">
               <template #default="{ row }">
                 {{ row.userId.profile.gender === 'male' ? '男' : row.userId.profile.gender === 'female' ? '女' : '其他' }}
               </template>
             </el-table-column>
-            <el-table-column prop="userId.profile.major" label="专业" width="150" />
+            <el-table-column prop="userId.profile.major" label="专业" />
             <el-table-column label="年级" width="120">
               <template #default="{ row }">
                 {{ row.userId.profile.grade || '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="匹配度" width="100">
+            <el-table-column label="匹配度" width="100" align="center">
               <template #default="{ row }">
                 <el-tag type="success">{{ row.matchScore }}%</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
+            <el-table-column label="操作" width="100" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button type="primary" size="small" @click="handleSelect(row.userId._id)">选择</el-button>
               </template>
@@ -143,6 +143,11 @@
                 </el-tag>
               </template>
             </el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button type="danger" size="small" @click="handleDeleteRequest(row._id)">删除</el-button>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
       </el-main>
@@ -152,7 +157,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 import ScheduleSelector from '@/components/ScheduleSelector.vue'
 import { SCHEDULE_CONFIG, getPeriodsTimeRange } from '@/utils/schedule'
@@ -259,6 +264,23 @@ const loadMyRequests = async () => {
     myRequests.value = data
   } catch (error) {
     console.error(error)
+  }
+}
+
+const handleDeleteRequest = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除此代课请求吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await api.delete(`/match/${id}`)
+    ElMessage.success('删除成功')
+    loadMyRequests()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
   }
 }
 

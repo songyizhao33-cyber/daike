@@ -146,6 +146,7 @@ const handleLogout = () => {
   cursor: pointer;
   transition: all 0.3s;
   border: none;
+  overflow: hidden;
 }
 
 .feature-card.primary {
