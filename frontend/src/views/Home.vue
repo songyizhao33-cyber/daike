@@ -16,21 +16,21 @@
         <el-row :gutter="20" class="main-features" justify="center">
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/availability')">
-              <el-icon :size="60" color="#409eff"><Calendar /></el-icon>
+              <el-icon :size="50" color="#409eff"><Calendar /></el-icon>
               <h3>空闲时间</h3>
               <p>标记你的空闲时间段</p>
             </el-card>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/match')">
-              <el-icon :size="60" color="#67c23a"><Search /></el-icon>
+              <el-icon :size="50" color="#67c23a"><Search /></el-icon>
               <h3>寻找代课</h3>
               <p>发布需求，匹配代课者</p>
             </el-card>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-card shadow="hover" class="feature-card primary" @click="$router.push('/meal')">
-              <el-icon :size="60" color="#e6a23c"><Orange /></el-icon>
+              <el-icon :size="50" color="#e6a23c"><Orange /></el-icon>
               <h3>约饭</h3>
               <p>寻找饭搭子，一起吃饭</p>
             </el-card>
@@ -149,9 +149,9 @@ const handleLogout = () => {
 }
 
 .feature-card.primary {
-  padding: 44px 24px;
+  padding: 30px 20px;
   background: white;
-  height: 240px;
+  height: 200px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -164,14 +164,14 @@ const handleLogout = () => {
 }
 
 .feature-card.primary h3 {
-  margin: 20px 0 10px;
+  margin: 15px 0 8px;
   color: #333;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .feature-card.primary p {
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
   margin: 0;
 }
 

@@ -69,14 +69,18 @@
                 {{ row.userId.profile.gender === 'male' ? '男' : row.userId.profile.gender === 'female' ? '女' : '其他' }}
               </template>
             </el-table-column>
-            <el-table-column prop="userId.profile.major" label="专业" />
-            <el-table-column prop="userId.profile.grade" label="年级" width="100" />
+            <el-table-column prop="userId.profile.major" label="专业" width="150" />
+            <el-table-column label="年级" width="120">
+              <template #default="{ row }">
+                {{ row.userId.profile.grade || '-' }}
+              </template>
+            </el-table-column>
             <el-table-column label="匹配度" width="100">
               <template #default="{ row }">
                 <el-tag type="success">{{ row.matchScore }}%</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100">
+            <el-table-column label="操作" width="100" fixed="right">
               <template #default="{ row }">
                 <el-button type="primary" size="small" @click="handleSelect(row.userId._id)">选择</el-button>
               </template>
